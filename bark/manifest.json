@@ -1,0 +1,9 @@
+{
+    "name": "bark",
+    "fullname": "Bark (Ark)",
+    "description": "Integrazione con barkd (Ark protocol): saldo Ark/on-chain, indirizzi, board e pagamenti.",
+    "available_for": ["qt"],
+    "author": "Pietro",
+    "version": "0.0.1",
+    "license": "MIT"
+}
