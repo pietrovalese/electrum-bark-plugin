@@ -26,9 +26,7 @@
 15. [Packaging and distribution](#15-packaging-and-distribution)
 16. [Troubleshooting](#16-troubleshooting)
 17. [Security notes](#17-security-notes)
-18. [Known limitations and roadmap](#18-known-limitations-and-roadmap)
-19. [Hackathon demo script](#19-hackathon-demo-script)
-20. [References](#20-references)
+18. [References](#20-references)
 
 ---
 
@@ -483,66 +481,7 @@ Bump the version in `bark/manifest.json` before building a release zip.
 * Never commit tokens, datadirs or mnemonics. `.gitignore` already excludes `.env`, `venv/`, `dist/`. If a token ever lands in git history, rotate it (`secret refresh`).
 * The *Send* flow asks for confirmation showing destination and amount before calling barkd. Keep that.
 
-## 18. Known limitations and roadmap
-
-Limitations of v0.1.0:
-
-* Qt GUI only (`available_for: ["qt"]`); no QML/mobile, no command-line commands.
-* No push notifications: balances refresh by polling every 15 s. barkd offers long-polling/websocket notifications (`NotificationsApi`) that would give instant "payment received".
-* No VTXO management UI (expiry, refresh, emergency exit) even though VTXOs expire — the most important next feature for real use (`WalletApi.refresh_all`, `vtxos`, `ExitsApi`).
-* No fee estimates before sending/boarding (`FeesApi`).
-* Amounts are shown in sats only; no fiat/units integration with Electrum's settings.
-* UI strings use Electrum's `_()` but only English exists.
-* The plugin tab is added on wallet load; enabling the plugin with a wallet already open requires reopening the wallet.
-* `pending_boards()` exists in the client but is not displayed.
-
-Suggested order for the hackathon, by value for the time:
-
-1. Verify the live path (§14) and fix what breaks.
-2. Notifications via `wait_notification` → popup on incoming payment.
-3. VTXO expiry display + *Refresh VTXOs* button.
-4. Fee estimates in the confirmation dialogs.
-5. Pending boards list in Overview.
-6. Command-line commands (`available_for: ["qt","cmdline"]`).
-
-## 19. Hackathon demo script
-
-Before going on stage:
-
-* [ ] barkd running (`./script/run_barkd.sh`), `smoke_test.py` passes, wallet funded **and already boarded** with a few thousand sats.
-* [ ] Electrum on signet with the plugin enabled; Bark tab shows *Connected*.
-* [ ] **Fallback ready:** Settings → *Use fake client* rehearsed end to end.
-* [ ] Screen recording of a full successful run saved locally.
-* [ ] `demo/ark-quest.html` opened in a browser tab (intro and second fallback).
-
-### 19.1 Ark Quest, the gamified demo app
-
-`demo/ark-quest.html` is a browser game that tells the story of the plugin. Use it to introduce the idea (and to explain Ark to people who have never heard of it) **before** switching to the real Electrum demo, or as the fallback if the live demo breaks.
-
-| Mission | What the player does | What it teaches | Matches this plugin feature |
-|---|---|---|---|
-| 1. Fund | Sends 100,000 sat from the Electrum wallet to barkd and waits for a confirmation | Electrum stays the on-chain wallet; barkd is the Ark wallet | *Fund barkd from this Electrum wallet* |
-| 2. Board | Boards all on-chain funds; they show as pending, then spendable | What boarding is and why it takes a confirmation | *Board all* |
-| 3. Pay | Pays a café 5,000 sat on-chain, then with Ark, and sees the difference in waiting time and fee | Why Ark payments are instant and cheap (numbers are illustrative) | Send tab |
-| 4. Receive | Generates one QR containing an Ark address, a Lightning invoice and an on-chain fallback; the friend pays it | BIP 321 unified payment requests | Receive tab |
-| 5. Defend | Refreshes three expiring coins before their bars empty | Coins (VTXOs) expire and must be refreshed | Roadmap: VTXO refresh button |
-
-Gameplay: XP and levels (Deckhand, Boarder, First mate, Captain), five badges, and a coin that physically travels between the four stations. A strip under the mission shows the **real barkd endpoint** each action corresponds to, so the audience sees how the game maps to the code. Missions 1 to 4 take about 2 minutes in total; mission 5 adds 15 seconds of tension.
-
-Presenting tips: run it full-screen; let one person from the audience click; press *Play again* to reset. It respects the system light/dark theme and the reduced-motion setting. To customise numbers, texts or missions, edit the single HTML file; there is nothing to build.
-
-### 19.2 Suggested 4-minute live flow (real plugin)
-
-1. *Problem (20 s):* Electrum is on-chain only; Ark gives instant, cheap payments but needs a separate wallet.
-2. *Show the tab (20 s):* balances for Ark and on-chain side by side.
-3. *The bridge (60 s):* click *Fund barkd from this Electrum wallet…* — Electrum's own Send tab is pre-filled. Send; show the confirmation. (Use a pre-funded state if confirmation would take too long.)
-4. *Board (30 s):* *Board all* → *boarding (pending)* → spendable.
-5. *Receive (30 s):* generate one BIP 321 QR containing Ark + Lightning (+ on-chain).
-6. *Send (30 s):* pay an Ark address instantly; show *History*.
-7. *Architecture slide (30 s):* the diagram in §3 — "Electrum plugin → barkd → Ark server; keys stay in barkd".
-8. *Roadmap (20 s):* notifications, VTXO refresh, fees.
-
-## 20. References
+## 18. References
 
 * Bark SDK docs: https://second.tech/docs/bark-sdk
 * Barkd docs and REST API reference: https://second.tech/docs (section *Barkd*; clients page for the Python client `barkd-client`)

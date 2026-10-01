@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ark Quest: board the Ark from Electrum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#EAF4F4;--panel:#FFFFFF;--ink:#0E2433;--mute:#4F6B7A;--line:#C5DADA;
+  --teal:#1B8F8A;--teal-ink:#FFFFFF;--coin:#F5A524;--bad:#D6453A;--ok:#1B8F8A;
+  --f:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --m:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A1A25;--panel:#11283A;--ink:#E6F2F2;--mute:#8FB0BF;--line:#21425A;--teal:#35C2BB;--teal-ink:#06222A;--coin:#FFB84D;--bad:#FF7A6E;--ok:#35C2BB}}
+:root[data-theme="dark"]{--bg:#0A1A25;--panel:#11283A;--ink:#E6F2F2;--mute:#8FB0BF;--line:#21425A;--teal:#35C2BB;--teal-ink:#06222A;--coin:#FFB84D;--bad:#FF7A6E;--ok:#35C2BB}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.5 var(--f)}
+main{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+h1{font:800 clamp(30px,6vw,52px)/1.02 var(--f);margin:0;letter-spacing:-.02em}
+h2{font:600 22px/1.2 var(--f);margin:0 0 6px}
+p{margin:0 0 10px;max-width:68ch}
+.top{display:flex;gap:16px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;margin-bottom:18px}
+.sub{color:var(--mute);margin-top:8px;max-width:52ch}
+.hud{min-width:230px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.hud b{font-weight:800}
+.xpbar{height:10px;background:var(--line);border-radius:9px;overflow:hidden;margin-top:8px}
+.xpbar i{display:block;height:100%;width:0;background:var(--coin);transition:width .5s}
+.route{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.dock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:104px;transition:border-color .3s,transform .3s}
+.dock.hit{border-color:var(--coin);transform:translateY(-3px)}
+.dock small{display:block;color:var(--mute);font-size:13px;line-height:1.3}
+.dock strong{display:block;font:600 15px/1.2 var(--f);margin-bottom:4px}
+.bal{font:600 22px/1.2 var(--m);color:var(--ink)}
+.pend{font:400 13px var(--m);color:var(--coin);min-height:18px}
+#coin{position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--coin);border:3px solid #0E2433;opacity:0;pointer-events:none;z-index:5;box-shadow:0 0 0 4px rgba(245,165,36,.35)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.steps{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.steps span{font-size:14px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.steps span.on{border-color:var(--teal);color:var(--ink);font-weight:600}
+.steps span.ok{background:var(--teal);color:var(--teal-ink);border-color:var(--teal)}
+button{font:600 17px var(--f);background:var(--teal);color:var(--teal-ink);border:0;border-radius:10px;padding:11px 18px;cursor:pointer;margin:4px 8px 4px 0}
+button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible{outline:3px solid var(--coin);outline-offset:2px}
+input{font:600 17px var(--m);background:var(--bg);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;width:150px}
+.bar{height:12px;background:var(--line);border-radius:9px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;width:0;background:var(--teal)}
+.note{color:var(--mute);font-size:15px}
+.win{color:var(--ok);font-weight:600}
+.lose{color:var(--bad);font-weight:600}
+.api{font:400 13px/1.6 var(--m);background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;min-height:44px;overflow-x:auto;white-space:pre}
+.api em{font-style:normal;color:var(--teal)}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{padding:6px 12px;border-radius:99px;border:1.5px dashed var(--line);color:var(--mute);font-size:15px}
+.badge.got{border:1.5px solid var(--coin);color:var(--ink);font-weight:600;background:rgba(245,165,36,.15)}
+.qr{display:grid;grid-template-columns:repeat(21,7px);gap:1px;padding:8px;background:#fff;width:fit-content;border-radius:6px}
+.qr i{width:7px;height:7px;background:#fff}.qr i.k{background:#0E2433}
+.addr{font:400 13px/1.5 var(--m);word-break:break-all;color:var(--mute)}
+.addr b{color:var(--ink);font-weight:600}
+.rx{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:10px}
+.vt{display:grid;gap:10px;margin:12px 0}
+.vt div{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center}
+.vt .bar{margin:0}.vt button{margin:0;padding:7px 12px;font-size:15px}
+.vt .bar i{background:var(--ok)}.vt .low i{background:var(--bad)}
+.foot{color:var(--mute);font-size:14px;margin-top:22px}
+@media(max-width:680px){.route{grid-template-columns:1fr 1fr}.hud{width:100%}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>Ark Quest</h1>
+      <p class="sub">Move bitcoin from an Electrum wallet onto Ark, pay instantly, and keep your coins alive. Five missions, one coin, a lot of tide.</p>
+    </div>
+    <div class="hud" aria-live="polite">
+      <div><b id="lvl">Deckhand</b> &nbsp;<span id="xpn">0 XP</span></div>
+      <div class="xpbar"><i id="xpb"></i></div>
+    </div>
+  </div>
+
+  <section class="route" id="route" aria-label="Where your coins are">
+    <div id="coin"></div>
+    <div class="dock" id="d0"><strong>Electrum wallet</strong><small>on-chain, yours</small><div class="bal" id="b0"></div><div class="pend" id="p0"></div></div>
+    <div class="dock" id="d1"><strong>barkd</strong><small>local Ark wallet</small><div class="bal" id="b1"></div><div class="pend" id="p1"></div></div>
+    <div class="dock" id="d2"><strong>Ark balance</strong><small>instant payments</small><div class="bal" id="b2"></div><div class="pend" id="p2"></div></div>
+    <div class="dock" id="d3"><strong>Alice's café</strong><small>someone to pay</small><div class="bal" id="b3"></div><div class="pend" id="p3"></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="steps" id="steps"></div>
+    <div id="stage"></div>
+    <div class="api" id="api" aria-label="API calls made by the plugin">Calls the plugin makes appear here.</div>
+  </section>
+
+  <section class="panel">
+    <h2>Badges</h2>
+    <div class="badges" id="badges"></div>
+  </section>
+
+  <p class="foot">This is a simulation for the demo: no real funds, no connection to barkd. Fees and waiting times are illustrative. The real thing is the Electrum plugin; every call shown above is one it makes.</p>
+</main>
+
+<script>
+(function(){
+"use strict";
+var RM=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+var $=function(id){return document.getElementById(id)};
+var fmt=function(n){return n.toLocaleString("en-US")+" sat"};
+var LEVELS=[[0,"Deckhand"],[150,"Boarder"],[350,"First mate"],[550,"Captain"]];
+var BADGES={board:"First board",patient:"Patient one",speed:"Speed demon",merchant:"Merchant",guard:"Guardian"};
+var MISSIONS=["Fund","Board","Pay","Receive","Defend"];
+var S,timers=[];
+
+function reset(){clearAll();S={el:250000,oc:0,pend:0,ark:0,al:0,xp:0,m:0,badges:{},tried:false,done:false,log:[]};
+  $("api").innerHTML="Calls the plugin makes appear here.";render();mission(0)}
+function later(fn,ms){var t=setTimeout(fn,RM?0:ms);timers.push(t);return t}
+function every(fn,ms){var t=setInterval(fn,ms);timers.push(t);return t}
+function clearAll(){timers.forEach(function(t){clearTimeout(t);clearInterval(t)});timers=[]}
+
+function render(){
+  $("b0").textContent=fmt(S.el);$("b1").textContent=fmt(S.oc);$("b2").textContent=fmt(S.ark);$("b3").textContent=fmt(S.al);
+  $("p1").textContent="";$("p2").textContent=S.pend?"boarding "+fmt(S.pend):"";
+  var lv=LEVELS[0][1],next=LEVELS[1][0],base=0;
+  LEVELS.forEach(function(l,i){if(S.xp>=l[0]){lv=l[1];base=l[0];next=(LEVELS[i+1]||[600])[0]}});
+  $("lvl").textContent=lv;$("xpn").textContent=S.xp+" XP";
+  $("xpb").style.width=Math.min(100,(S.xp-base)/(next-base)*100)+"%";
+  $("steps").innerHTML=MISSIONS.map(function(n,i){return '<span class="'+(i<S.m||S.done?"ok":i===S.m?"on":"")+'">'+n+"</span>"}).join("");
+  $("badges").innerHTML=Object.keys(BADGES).map(function(k){return '<span class="badge'+(S.badges[k]?" got":"")+'">'+BADGES[k]+"</span>"}).join("");
+}
+function api(verb,path,what){
+  S.log.push('<em>'+verb+"</em> "+path+"   "+what);S.log=S.log.slice(-4);$("api").innerHTML=S.log.join("\n")}
+function hit(i){var d=$("d"+i);d.classList.add("hit");later(function(){d.classList.remove("hit")},700)}
+function fly(a,b,ms,cb){
+  var r=$("route").getBoundingClientRect(),c=$("coin");
+  function mid(i){var x=$("d"+i).getBoundingClientRect();return{x:x.left-r.left+x.width/2-13,y:x.top-r.top+x.height/2-13}}
+  var p=mid(a),q=mid(b);
+  c.style.transition="none";c.style.opacity="1";c.style.transform="translate("+p.x+"px,"+p.y+"px)";
+  void c.offsetWidth;
+  c.style.transition=RM?"none":"transform "+ms+"ms ease-in-out";c.style.transform="translate("+q.x+"px,"+q.y+"px)";
+  later(function(){c.style.opacity="0";hit(b);if(cb)cb()},ms+30)}
+function progress(ms,label,cb){
+  var st=$("stage"),w=document.createElement("div");
+  w.innerHTML='<p class="note">'+label+'</p><div class="bar"><i></i></div>';st.appendChild(w);
+  var i=w.querySelector("i"),t0=Date.now();
+  var t=every(function(){var f=RM?1:Math.min(1,(Date.now()-t0)/ms);i.style.width=f*100+"%";
+    if(f>=1){clearInterval(t);w.remove();cb()}},60)}
+function gain(xp,badge){S.xp+=xp;if(badge)S.badges[badge]=1;S.m++;render()}
+function ready(msg,xp){
+  var st=$("stage");var d=document.createElement("div");
+  d.innerHTML='<p class="win">'+msg+" +"+xp+' XP</p>';
+  var b=document.createElement("button");b.textContent=S.m>=MISSIONS.length?"See your result":"Next mission";
+  b.onclick=function(){S.m>=MISSIONS.length?finale():mission(S.m)};d.appendChild(b);st.appendChild(d);b.focus()}
+function stage(title,text){$("stage").innerHTML="<h2>"+title+"</h2><p>"+text+"</p>";return $("stage")}
+function btn(label,fn,alt){var b=document.createElement("button");b.textContent=label;if(alt)b.className="alt";b.onclick=function(){fn(b)};$("stage").appendChild(b);return b}
+
+function mission(i){
+  clearAll();render();
+  [m0,m1,m2,m3,m4][i]()}
+
+function m0(){
+  stage("Fund barkd from Electrum","barkd keeps your Ark wallet. To fill it, pay its on-chain address from your Electrum wallet. The plugin copies that address into Electrum's own Send tab for you.");
+  btn("Send 100,000 sat from Electrum",function(b){
+    b.disabled=true;api("POST","/onchain/addresses/next","fresh barkd address, placed in Electrum's Send tab");
+    S.el-=100000;render();fly(0,1,900,function(){
+      progress(2800,"Waiting for 1 confirmation...",function(){
+        S.oc+=100000;render();api("GET","/onchain/balance","confirmed: 100,000 sat");
+        gain(100,null);ready("Funds confirmed in barkd.",100)})})})}
+
+function m1(){
+  stage("Board the Ark","Boarding turns on-chain coins into Ark funds. They show as pending until the board transaction confirms, then they are spendable instantly.");
+  btn("Board all on-chain funds",function(b){
+    b.disabled=true;api("POST","/boards/board-all","all confirmed funds go into Ark");
+    S.pend=S.oc;S.oc=0;render();fly(1,2,900,function(){
+      progress(2200,"Board transaction confirming...",function(){
+        S.ark+=S.pend;S.pend=0;render();api("GET","/wallet/balance","spendable: "+fmt(S.ark));
+        gain(100,"board");ready("You are on the Ark.",100)})})})}
+
+function m2(){
+  stage("Buy Alice a coffee","Alice's café wants 5,000 sat. You can pay on-chain from your Ark balance, or pay with Ark. Try both if you are curious: only the Ark payment completes the mission.");
+  var st=$("stage"),res=document.createElement("p");res.className="note";
+  var b1=btn("Pay on-chain (slow, higher fee)",function(b){
+    b.disabled=true;api("POST","/wallet/send-onchain","5,000 sat to an on-chain address");
+    S.tried=true;fly(2,3,900,function(){progress(3200,"Waiting for a block...",function(){
+      S.ark-=6200;S.al+=5000;render();b.disabled=false;
+      res.innerHTML='On-chain took a block and cost <b>1,200 sat</b> in fees. Now try Ark.';
+      S.badges.patient=1;render()})})},true);
+  btn("Pay with Ark (instant)",function(b){
+    b.disabled=true;b1.disabled=true;api("POST","/wallet/send","5,000 sat to an Ark address");
+    S.ark-=5010;S.al+=5000;render();fly(2,3,500,function(){
+      res.innerHTML='Instant, fee <b>10 sat</b>. Same coffee, no waiting.';
+      gain(100,"speed");if(S.tried)S.xp+=50;render();ready("Coffee paid with Ark.",S.tried?150:100)})});
+  st.appendChild(res)}
+
+function qrGrid(){var s=7,h="";for(var r=0;r<21;r++)for(var c=0;c<21;c++){
+  var fin=(r<7&&c<7)||(r<7&&c>13)||(r>13&&c<7),on;
+  if(fin){var rr=r%14%7,cc=c%14%7;on=rr===0||rr===6||cc===0||cc===6||(rr>1&&rr<5&&cc>1&&cc<5)}
+  else{s=(s*1103515245+12345)&0x7fffffff;on=(s>>8)%3===0}
+  h+='<i class="'+(on?"k":"")+'"></i>'}return h}
+function m3(){
+  stage("Get paid with one QR","One BIP 321 code can carry an Ark address, a Lightning invoice and an on-chain fallback. The payer's wallet picks what it understands.");
+  var st=$("stage"),amt=document.createElement("input");amt.value="3000";amt.setAttribute("aria-label","Amount in sat");
+  st.appendChild(amt);var box=document.createElement("div");
+  btn("Generate payment request",function(b){
+    var n=Math.max(1,parseInt(amt.value,10)||3000);b.disabled=true;amt.disabled=true;
+    api("POST","/wallet/bip321","amount "+fmt(n)+", with on-chain fallback");
+    box.innerHTML='<div class="rx"><div class="qr">'+qrGrid()+'</div><div class="addr"><b>Ark</b><br>tark1qz8e0v4...h7ak<br><br><b>Lightning</b><br>lntbs30u1p...x9q2<br><br><b>On-chain</b><br>tb1qw508d6...f3t4</div></div>';
+    var go=document.createElement("button");go.textContent="Alice pays it";
+    go.onclick=function(){go.disabled=true;fly(3,2,500,function(){S.al=Math.max(0,S.al-n);S.ark+=n;render();
+      gain(100,"merchant");ready("Received "+fmt(n)+" instantly.",100)})};
+    box.appendChild(go);st.appendChild(box)});
+  st.appendChild(box)}
+
+function m4(){
+  stage("Keep your coins alive","Ark coins (VTXOs) expire if you leave them. Refresh each one before its bar empties. Survive 15 seconds.");
+  var st=$("stage"),vt=document.createElement("div"),info=document.createElement("p");vt.className="vt";info.className="note";
+  var rates=[100/9,100/11,100/14],lvl=[100,100,100],rows=[];
+  rates.forEach(function(r,i){
+    var row=document.createElement("div");row.innerHTML="<span>Coin "+(i+1)+'</span><div class="bar"><i></i></div>';
+    var rb=document.createElement("button");rb.textContent="Refresh";rb.disabled=true;
+    rb.onclick=function(){lvl[i]=100;api("POST","/wallet/refresh/all","coin "+(i+1)+" renewed")};
+    row.appendChild(rb);vt.appendChild(row);rows.push({row:row,bar:row.querySelector(".bar"),i:row.querySelector("i"),b:rb})});
+  st.appendChild(vt);st.appendChild(info);
+  btn("Start the tide",function(b){
+    b.disabled=true;rows.forEach(function(r){r.b.disabled=false});var t0=Date.now(),last=t0;
+    var t=every(function(){
+      var now=Date.now(),dt=(now-last)/1000;last=now;var el=(now-t0)/1000;if(RM)el=15;
+      info.textContent="Time left: "+Math.max(0,15-el).toFixed(1)+" s";
+      var dead=false;
+      rows.forEach(function(r,k){lvl[k]-=rates[k]*dt;r.i.style.width=Math.max(0,lvl[k])+"%";r.bar.className="bar"+(lvl[k]<30?" low":"");if(lvl[k]<=0)dead=true});
+      if(dead){clearInterval(t);rows.forEach(function(r){r.b.disabled=true});
+        info.innerHTML='<span class="lose">A coin expired.</span> Refresh sooner next time.';
+        var rt=document.createElement("button");rt.textContent="Try again";rt.onclick=function(){mission(4)};st.appendChild(rt);rt.focus()}
+      else if(el>=15){clearInterval(t);rows.forEach(function(r){r.b.disabled=true});gain(150,"guard");ready("All coins renewed in time.",150)}},100)})}
+
+function finale(){
+  S.done=true;render();
+  var st=$("stage");
+  st.innerHTML="<h2>You boarded the Ark</h2><p>You finished as <b>"+$("lvl").textContent+"</b> with "+S.xp+" XP. In the real plugin each step is a button:</p>"+
+  "<p class='note'>Overview: fund barkd from Electrum, board, see balances. Receive: one BIP 321 QR. Send: Ark, Lightning or on-chain. History: every movement. The next feature on the roadmap is the coin-refresh game you just played, as a real button.</p>";
+  btn("Play again",reset)}
+
+reset();
+})();
+</script>
+</body>
+</html>
