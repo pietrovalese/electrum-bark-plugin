@@ -1,31 +1,41 @@
-import os
-import barkd_client
-from barkd_client import (
-    Configuration, WalletApi, CreateWalletRequest,
-    ChainSourceConfig, ChainSourceConfigOneOf1,
-    ChainSourceConfigOneOf1Esplora, BarkNetwork,
-)
-from barkd_client.exceptions import ApiException
+"""Controlla barkd e il client Python senza Electrum.
 
-cfg = Configuration(host='http://localhost:3001',
-                    access_token=os.environ['BARKD_TOKEN'])
+Prerequisiti: barkd avviato (./script/run_barkd.sh) e BARKD_TOKEN esportato
+(export BARKD_TOKEN=$(./script/barkd_token.sh)). Host diverso: BARKD_HOST.
 
-with barkd_client.ApiClient(cfg) as client:
-    wallet = WalletApi(client)
+Stampa l'URL di barkd e un'istantanea dei saldi (creando il wallet su signet se manca),
+poi un nuovo indirizzo on-chain da usare per finanziare barkd.
+"""
+import json
+import pathlib
+import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from bark.client import BarkClient, BarkError, BarkNoWallet, BarkUnavailable  # noqa: E402
+
+
+def main() -> int:
+    client = BarkClient()
+    print("barkd URL:", client.host)
     try:
-        addr = wallet.address().address
-    except ApiException as e:
-        if "No wallet set" not in str(e.body):
-            raise
-        print("Wallet assente, lo creo...")
-        wallet.create_wallet(CreateWalletRequest(
-            ark_server='https://ark.signet.2nd.dev',
-            chain_source=ChainSourceConfig(actual_instance=ChainSourceConfigOneOf1(
-                esplora=ChainSourceConfigOneOf1Esplora(url='https://esplora.signet.2nd.dev'))),
-            network=BarkNetwork.SIGNET,
-        ))
-        addr = wallet.address().address
+        try:
+            snap = client.snapshot(sync=True)
+        except BarkNoWallet:
+            print("No wallet yet, creating one on signet...")
+            client.create_wallet()
+            snap = client.snapshot(sync=True)
+        print("Snapshot:", json.dumps(snap, indent=2))
+        print("Fresh on-chain address:", client.new_onchain_address())
+    except BarkUnavailable as e:
+        print(f"barkd is not reachable at {client.host}: {e}\n"
+              "Is ./script/run_barkd.sh running?", file=sys.stderr)
+        return 1
+    except BarkError as e:
+        print("Error:", e, file=sys.stderr)
+        return 1
+    return 0
 
-    print("Indirizzo Ark:", addr)
-    print("Saldo:", wallet.balance())
+
+if __name__ == '__main__':
+    sys.exit(main())
