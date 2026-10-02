@@ -1,253 +1,294 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ark Quest: board the Ark from Electrum</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
-  --bg:#EAF4F4;--panel:#FFFFFF;--ink:#0E2433;--mute:#4F6B7A;--line:#C5DADA;
-  --teal:#1B8F8A;--teal-ink:#FFFFFF;--coin:#F5A524;--bad:#D6453A;--ok:#1B8F8A;
-  --f:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --m:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0A1A25;--panel:#11283A;--ink:#E6F2F2;--mute:#8FB0BF;--line:#21425A;--teal:#35C2BB;--teal-ink:#06222A;--coin:#FFB84D;--bad:#FF7A6E;--ok:#35C2BB}}
-:root[data-theme="dark"]{--bg:#0A1A25;--panel:#11283A;--ink:#E6F2F2;--mute:#8FB0BF;--line:#21425A;--teal:#35C2BB;--teal-ink:#06222A;--coin:#FFB84D;--bad:#FF7A6E;--ok:#35C2BB}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.5 var(--f)}
-main{max-width:980px;margin:0 auto;padding:20px 16px 40px}
-h1{font:800 clamp(30px,6vw,52px)/1.02 var(--f);margin:0;letter-spacing:-.02em}
-h2{font:600 22px/1.2 var(--f);margin:0 0 6px}
-p{margin:0 0 10px;max-width:68ch}
-.top{display:flex;gap:16px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;margin-bottom:18px}
-.sub{color:var(--mute);margin-top:8px;max-width:52ch}
-.hud{min-width:230px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
-.hud b{font-weight:800}
-.xpbar{height:10px;background:var(--line);border-radius:9px;overflow:hidden;margin-top:8px}
-.xpbar i{display:block;height:100%;width:0;background:var(--coin);transition:width .5s}
-.route{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
-.dock{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:104px;transition:border-color .3s,transform .3s}
-.dock.hit{border-color:var(--coin);transform:translateY(-3px)}
-.dock small{display:block;color:var(--mute);font-size:13px;line-height:1.3}
-.dock strong{display:block;font:600 15px/1.2 var(--f);margin-bottom:4px}
-.bal{font:600 22px/1.2 var(--m);color:var(--ink)}
-.pend{font:400 13px var(--m);color:var(--coin);min-height:18px}
-#coin{position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--coin);border:3px solid #0E2433;opacity:0;pointer-events:none;z-index:5;box-shadow:0 0 0 4px rgba(245,165,36,.35)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
-.steps{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.steps span{font-size:14px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
-.steps span.on{border-color:var(--teal);color:var(--ink);font-weight:600}
-.steps span.ok{background:var(--teal);color:var(--teal-ink);border-color:var(--teal)}
-button{font:600 17px var(--f);background:var(--teal);color:var(--teal-ink);border:0;border-radius:10px;padding:11px 18px;cursor:pointer;margin:4px 8px 4px 0}
-button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
-button:disabled{opacity:.45;cursor:default}
-button:focus-visible,input:focus-visible{outline:3px solid var(--coin);outline-offset:2px}
-input{font:600 17px var(--m);background:var(--bg);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;width:150px}
-.bar{height:12px;background:var(--line);border-radius:9px;overflow:hidden;margin:10px 0}
-.bar i{display:block;height:100%;width:0;background:var(--teal)}
-.note{color:var(--mute);font-size:15px}
-.win{color:var(--ok);font-weight:600}
-.lose{color:var(--bad);font-weight:600}
-.api{font:400 13px/1.6 var(--m);background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;min-height:44px;overflow-x:auto;white-space:pre}
-.api em{font-style:normal;color:var(--teal)}
-.badges{display:flex;gap:8px;flex-wrap:wrap}
-.badge{padding:6px 12px;border-radius:99px;border:1.5px dashed var(--line);color:var(--mute);font-size:15px}
-.badge.got{border:1.5px solid var(--coin);color:var(--ink);font-weight:600;background:rgba(245,165,36,.15)}
-.qr{display:grid;grid-template-columns:repeat(21,7px);gap:1px;padding:8px;background:#fff;width:fit-content;border-radius:6px}
-.qr i{width:7px;height:7px;background:#fff}.qr i.k{background:#0E2433}
-.addr{font:400 13px/1.5 var(--m);word-break:break-all;color:var(--mute)}
-.addr b{color:var(--ink);font-weight:600}
-.rx{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:10px}
-.vt{display:grid;gap:10px;margin:12px 0}
-.vt div{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center}
-.vt .bar{margin:0}.vt button{margin:0;padding:7px 12px;font-size:15px}
-.vt .bar i{background:var(--ok)}.vt .low i{background:var(--bad)}
-.foot{color:var(--mute);font-size:14px;margin-top:22px}
-@media(max-width:680px){.route{grid-template-columns:1fr 1fr}.hud{width:100%}}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
-</style>
-</head>
-<body>
-<main>
-  <div class="top">
-    <div>
-      <h1>Ark Quest</h1>
-      <p class="sub">Move bitcoin from an Electrum wallet onto Ark, pay instantly, and keep your coins alive. Five missions, one coin, a lot of tide.</p>
-    </div>
-    <div class="hud" aria-live="polite">
-      <div><b id="lvl">Deckhand</b> &nbsp;<span id="xpn">0 XP</span></div>
-      <div class="xpbar"><i id="xpb"></i></div>
-    </div>
-  </div>
-
-  <section class="route" id="route" aria-label="Where your coins are">
-    <div id="coin"></div>
-    <div class="dock" id="d0"><strong>Electrum wallet</strong><small>on-chain, yours</small><div class="bal" id="b0"></div><div class="pend" id="p0"></div></div>
-    <div class="dock" id="d1"><strong>barkd</strong><small>local Ark wallet</small><div class="bal" id="b1"></div><div class="pend" id="p1"></div></div>
-    <div class="dock" id="d2"><strong>Ark balance</strong><small>instant payments</small><div class="bal" id="b2"></div><div class="pend" id="p2"></div></div>
-    <div class="dock" id="d3"><strong>Alice's café</strong><small>someone to pay</small><div class="bal" id="b3"></div><div class="pend" id="p3"></div></div>
-  </section>
-
-  <section class="panel">
-    <div class="steps" id="steps"></div>
-    <div id="stage"></div>
-    <div class="api" id="api" aria-label="API calls made by the plugin">Calls the plugin makes appear here.</div>
-  </section>
-
-  <section class="panel">
-    <h2>Badges</h2>
-    <div class="badges" id="badges"></div>
-  </section>
-
-  <p class="foot">This is a simulation for the demo: no real funds, no connection to barkd. Fees and waiting times are illustrative. The real thing is the Electrum plugin; every call shown above is one it makes.</p>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#0b1420;--ink:#e8dcc0;--mute:#8aa0ad;--gold:#f5a524}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "JetBrains Mono",ui-monospace,monospace}
+main{max-width:980px;margin:0 auto;padding:14px 12px 32px}
+h1{font:400 clamp(16px,3.6vw,26px)/1.3 "Press Start 2P",monospace;margin:0 0 12px;color:var(--gold)}
+.wp{position:relative;border:4px solid #c8923a;border-radius:6px;background:#000;line-height:0}
+#world{display:block;width:100%;height:auto;image-rendering:pixelated;outline:0;cursor:pointer}
+#in{position:absolute;left:4%;top:79%;width:92%;height:8%;font:clamp(7px,1.4vw,12px) "Press Start 2P",monospace;background:#1d140d;color:#fff;border:2px solid #c8923a;padding:0 8px}
+#in[hidden]{display:none}
+.pad{display:none;gap:8px;justify-content:center;margin-top:10px}
+.pad button{font:400 16px "Press Start 2P",monospace;background:#1d140d;color:var(--gold);border:2px solid #c8923a;border-radius:6px;padding:14px 16px;touch-action:none}
+@media(pointer:coarse){.pad{display:flex}}
+.foot{color:var(--mute);font-size:13px;margin:10px 0 0}
+</style></head>
+<body><main>
+<h1>Ark Quest</h1>
+<div class="wp"><canvas id="world" width="640" height="448" tabindex="0" aria-label="Ark Quest game. Arrow keys or WASD to walk, E to talk, Space to attack, Q for the journal."></canvas><input id="in" hidden aria-label="Type here, Enter to confirm"></div>
+<div class="pad"><button data-k="ArrowLeft" aria-label="Left">&lt;</button><button data-k="ArrowUp" aria-label="Up">^</button><button data-k="ArrowDown" aria-label="Down">v</button><button data-k="ArrowRight" aria-label="Right">&gt;</button><button data-a="e">E</button><button data-a="a">A</button></div>
+<p class="foot"><span id="mode"></span> Arrows/WASD walk, E talk, Space attack, Q journal, M sound. Pixel art is drawn in code.</p>
 </main>
-
 <script>
-(function(){
-"use strict";
-var RM=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
-var $=function(id){return document.getElementById(id)};
-var fmt=function(n){return n.toLocaleString("en-US")+" sat"};
-var LEVELS=[[0,"Deckhand"],[150,"Boarder"],[350,"First mate"],[550,"Captain"]];
-var BADGES={board:"First board",patient:"Patient one",speed:"Speed demon",merchant:"Merchant",guard:"Guardian"};
-var MISSIONS=["Fund","Board","Pay","Receive","Defend"];
-var S,timers=[];
-
-function reset(){clearAll();S={el:250000,oc:0,pend:0,ark:0,al:0,xp:0,m:0,badges:{},tried:false,done:false,log:[]};
-  $("api").innerHTML="Calls the plugin makes appear here.";render();mission(0)}
-function later(fn,ms){var t=setTimeout(fn,RM?0:ms);timers.push(t);return t}
-function every(fn,ms){var t=setInterval(fn,ms);timers.push(t);return t}
-function clearAll(){timers.forEach(function(t){clearTimeout(t);clearInterval(t)});timers=[]}
-
-function render(){
-  $("b0").textContent=fmt(S.el);$("b1").textContent=fmt(S.oc);$("b2").textContent=fmt(S.ark);$("b3").textContent=fmt(S.al);
-  $("p1").textContent="";$("p2").textContent=S.pend?"boarding "+fmt(S.pend):"";
-  var lv=LEVELS[0][1],next=LEVELS[1][0],base=0;
-  LEVELS.forEach(function(l,i){if(S.xp>=l[0]){lv=l[1];base=l[0];next=(LEVELS[i+1]||[600])[0]}});
-  $("lvl").textContent=lv;$("xpn").textContent=S.xp+" XP";
-  $("xpb").style.width=Math.min(100,(S.xp-base)/(next-base)*100)+"%";
-  $("steps").innerHTML=MISSIONS.map(function(n,i){return '<span class="'+(i<S.m||S.done?"ok":i===S.m?"on":"")+'">'+n+"</span>"}).join("");
-  $("badges").innerHTML=Object.keys(BADGES).map(function(k){return '<span class="badge'+(S.badges[k]?" got":"")+'">'+BADGES[k]+"</span>"}).join("");
+(function(){"use strict";
+var $=function(i){return document.getElementById(i)},RM=!!(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches);
+var T=16,FONT='"Press Start 2P",monospace',DIED={};
+var MAP,NPCS;
+var CV=$("world"),X=CV.getContext("2d");X.setTransform(2,0,0,2,0,0);X.imageSmoothingEnabled=false;
+if(document.fonts)document.fonts.load('8px "Press Start 2P"');
+function R(g,c,x,y,w,h){g.fillStyle=c;g.fillRect(x,y,w,h)}
+function tx(s,x,y,c,al){X.font="8px "+FONT;X.textBaseline="top";X.textAlign=al||"left";X.fillStyle="#000";X.fillText(s,x+1,y+1);X.fillStyle=c||"#fff";X.fillText(s,x,y)}
+function mk(f){var c=document.createElement("canvas");c.width=c.height=T;f(c.getContext("2d"));return c}
+function nz(g,s,cs,n){for(var i=0;i<n;i++){s=(s*1103515245+12345)&0x7fffffff;R(g,cs[(s>>8)%cs.length],(s>>4)%T,(s>>12)%T,1,1)}}
+function grass(g){R(g,"#4f9a45",0,0,T,T);nz(g,7,["#5fae52","#43883b"],34)}
+function brick(g,a,b){R(g,a,0,0,T,T);for(var i=0;i<T;i+=4){R(g,b,0,i+3,T,1);for(var j=(i/4%2)*2;j<T;j+=4)R(g,b,j,i,1,3)}}
+var TI={g:mk(grass)};
+TI.p=mk(function(g){R(g,"#c9a66b",0,0,T,T);nz(g,3,["#b8935a","#dcbb83"],28)});
+TI.s=mk(function(g){R(g,"#e6d29a",0,0,T,T);nz(g,5,["#d6c086","#f0e0b0"],24)});
+TI.t=mk(function(g){grass(g);R(g,"rgba(0,0,0,.2)",3,12,10,3);R(g,"#6b4423",7,9,3,6);R(g,"#2f6b2f",3,2,10,8);R(g,"#2f6b2f",2,4,12,4);R(g,"#3f8a3a",5,3,4,3)});
+TI.R=mk(function(g){brick(g,"#a8443a","#8f362e")});TI.W=mk(function(g){brick(g,"#a9a08f","#837a6a")});
+TI.D=mk(function(g){brick(g,"#a9a08f","#837a6a");R(g,"#3b2410",3,2,10,14);R(g,"#5a3a1e",4,3,8,13);R(g,"#7a4f2a",7,3,1,13);R(g,"#f5a524",10,9,1,2)});
+TI.b=mk(function(g){R(g,"#8a5a2b",0,0,T,T);for(var i=3;i<T;i+=4)R(g,"#6b4423",0,i,T,1);nz(g,9,["#a06a35"],14)});
+TI.x=mk(function(g){brick(g,"#5a3a1e","#3b2410")});
+TI.f=mk(function(g){R(g,"#a8743c",0,0,T,T);for(var i=3;i<T;i+=4)R(g,"#8a5a2b",0,i,T,1);R(g,"#8a5a2b",5,0,1,4);R(g,"#8a5a2b",11,8,1,4)});
+TI.c=mk(function(g){R(g,"#a8743c",0,0,T,T);R(g,"#6b4423",0,6,T,10);R(g,"#d9a45a",0,3,T,4);R(g,"#3b2410",0,15,T,1)});
+TI.k=mk(function(g){R(g,"#a8743c",0,0,T,T);R(g,"#6b4423",3,3,10,11);R(g,"#8a5a2b",3,6,10,1);R(g,"#8a5a2b",3,10,10,1);R(g,"#3b2410",3,13,10,1)});
+TI.F=mk(function(g){brick(g,"#6e6e78","#4a4a54");R(g,"#1a1a1a",3,5,10,9);R(g,"#e0562a",4,8,8,6);R(g,"#f5a524",5,10,6,4);R(g,"#ffe08a",7,12,2,2)});
+TI.E=mk(function(g){R(g,"#a8743c",0,0,T,T);R(g,"#a8443a",1,3,14,10);R(g,"#d6706a",1,3,14,1)});
+TI.w=[0,1].map(function(f){return mk(function(g){R(g,"#2d6fb0",0,0,T,T);[[2,3],[9,7],[4,12],[12,1]].forEach(function(p){R(g,"#5aa0dc",(p[0]+f*3)%13,p[1],3,1)})})});
+function spr(o,d){return [0,1].map(function(f){return mk(function(g){
+  R(g,"rgba(0,0,0,.28)",3,14,10,2);R(g,o.bd,4,7,8,6);R(g,o.ac,4,11,8,1);R(g,o.sk,5,2,6,5);
+  if(d===3)R(g,o.hr,4,1,8,6);else{R(g,o.hr,4,1,8,3);R(g,o.hr,4,3,1,3);R(g,o.hr,11,3,1,3);
+    var e=d===1?[5,7]:d===2?[8,10]:[6,9];R(g,"#111",e[0],4,1,1);R(g,"#111",e[1],4,1,1)}
+  R(g,o.bd,3,8+f,1,3);R(g,o.bd,12,8+f,1,3);R(g,"#3b2a1a",5,13,2,2-f);R(g,"#3b2a1a",9,13,2,1+f);if(o.ex)o.ex(g,f)})})}
+function mon(c,d,crab){return [0,1].map(function(f){return mk(function(g){R(g,"rgba(0,0,0,.28)",2,14,12,2);R(g,c,3,7+f,10,6-f);R(g,c,5,5+f,6,3);R(g,d,3,12,10,1);
+  R(g,"#fff",5,8+f,2,2);R(g,"#fff",9,8+f,2,2);R(g,"#111",6,9+f,1,1);R(g,"#111",10,9+f,1,1);if(crab){R(g,c,1,5,3,3-f);R(g,c,12,5,3,3-f)}})})}
+var HO={bd:"#2a6fdb",hr:"#6b3b1a",sk:"#f1c79a",ac:"#f5a524",ex:function(g){R(g,"#d8dde2",13,3,1,7);R(g,"#f5a524",12,10,3,1)}};
+var HERO=[0,1,2,3].map(function(d){return spr(HO,d)});
+var BOSS={s:mon("#9b59d0","#6a3a96",1),hp:6,step:.8,xp:50},CRAB={s:mon("#e0563f","#a33323",1),hp:2,step:.5,xp:15};
+var QN=[
+ {n:"Brann",x:4,y:2,ms:[0],f:m0,loc:"forge, top left",w:"My forge is cold. Come back when your journey begins.",d:"The forge roars and barkd is stocked. Go on, hero.",
+  s:spr({bd:"#8a4b2a",hr:"#b5391f",sk:"#e0b088",ac:"#444",ex:function(g){R(g,"#444",5,8,6,5);R(g,"#777",12,5,3,2);R(g,"#6b4423",13,6,1,5)}})},
+ {n:"Harbor Master",x:20,y:25,ms:[1],f:m1,loc:"end of the pier",w:"No ship leaves before your coins are in barkd.",d:"The Ark is yours. Fair winds.",
+  s:spr({bd:"#1d3b5c",hr:"#d5d5d5",sk:"#e8bf94",ac:"#f5a524",ex:function(g){R(g,"#222",4,0,8,2);R(g,"#f5a524",7,1,2,1)}})},
+ {n:"Alice",x:7,y:3,ms:[2,3],f:function(n){return S.m===2?m2(n):m3(n)},loc:"cafe, top right",w:"Welcome! Come back once you have some Ark coins.",d:"Thanks again, the next coffee is on me.",
+  s:spr({bd:"#d6609b",hr:"#e8b04a",sk:"#f1c79a",ac:"#fff",ex:function(g){R(g,"#e8b04a",3,3,1,7);R(g,"#e8b04a",12,3,1,7)}})},
+ {n:"Tide Warden",x:35,y:21,ms:[4],f:m4,loc:"east beach",w:"The tide is calm for now. Finish what you started.",d:"The tide is held back. Rest, hero.",
+  s:spr({bd:"#1b8f8a",hr:"#35c2bb",sk:"#cfe9e6",ac:"#0e2433",ex:function(g){R(g,"#6fd3e0",13,1,1,12);R(g,"#6fd3e0",12,1,3,1);R(g,"#6fd3e0",12,0,1,2);R(g,"#6fd3e0",14,0,1,2)}})}];
+function FN(n,x,y,bd,hr,facts){return{n:n,x:x,y:y,ms:[],facts:facts,s:spr({bd:bd,hr:hr,sk:"#e8bf94",ac:"#fff"})}}
+var WN=[QN[1],QN[3],
+ FN("Old Sage",11,8,"#6a4fa0","#e8e8e8",["Bitcoin was described by Satoshi Nakamoto in a whitepaper in October 2008.","Only 21 million bitcoin will ever exist. The cap is written into the rules.","The first block, the genesis block, was mined on January 3, 2009."]),
+ FN("Little Pip",23,8,"#e0a030","#7a4a1a",["One bitcoin is 100 million satoshis. A sat is the smallest piece!","Ark coins are VTXOs, short for virtual UTXOs. They live off-chain.","Signet is a test network. Its coins are free and worth nothing, so playing is safe."]),
+ FN("Merchant",15,11,"#2f7a4a","#3b2410",["In 2010 someone paid 10,000 bitcoin for two pizzas. Pizza Day is May 22.","On-chain payments wait for blocks, about one every 10 minutes. Ark payments are instant.","Lightning invoices start with ln. You can pay them straight from your Ark balance."]),
+ FN("Guard",22,12,"#7a7f88","#222222",["Not your keys, not your coins. Keep your own keys safe!","An Ark user can always exit on-chain without the server's help. It costs more, but you stay in control.","Never share your barkd token. It controls your wallet!"]),
+ FN("Bard",28,12,"#b03a6a","#5a2a1a",["Hear my verse: every 210,000 blocks, about four years, the mining reward is halved.","Electrum, the wallet you came from, has been around since 2011.","Boarding hops your on-chain coins onto the Ark. Then payments are instant."]),
+ FN("Farmer",9,16,"#8a6a30","#c9a64a",["VTXOs expire! Like crops, they must be refreshed in a round to stay fresh.","A block bundles transactions and points to the previous block by its hash. Chain them up and you get the blockchain.","Bark is Second's implementation of Ark, and barkd is its wallet daemon."]),
+ FN("Monk",17,18,"#8a4b2a","#555555",["Be patient. A payment is safer after more confirmations.","Arkoor payments are instant, but trust the server briefly until your coins are refreshed.","An emergency exit moves your coins on-chain without anyone's permission."]),
+ FN("Fisherman",6,20,"#2a6f8a","#d5d5d5",["Many Ark users share one on-chain transaction in each round. That keeps fees low.","Lightning is another layer 2. It uses payment channels, and BOLT12 offers are reusable payment requests."])];
+function genWorld(NP){var W=40,H=28,g=[],i,j;
+  for(j=0;j<H;j++){g[j]=[];for(i=0;i<W;i++)g[j][i]=(j===0||j===H-1||i===0||i===W-1)?"t":j>=22?"w":j===21?"s":"g"}
+  function rect(x,y,w,h,c){for(var b=y;b<y+h;b++)for(var a=x;a<x+w;a++)g[b][a]=c}
+  function bld(x,y,w,h,d){rect(x,y,w,h,"H");if(d>=0)g[y+h-1][x+d]="D"}
+  rect(2,9,36,2,"p");rect(20,11,1,10,"p");rect(7,7,1,2,"p");rect(28,7,1,2,"p");rect(20,22,1,4,"b");
+  bld(5,3,5,4,2);bld(26,3,6,4,2);bld(34,3,3,5,-1);bld(14,3,5,3,-1);bld(2,13,4,3,-1);bld(12,13,4,3,-1);bld(24,14,4,3,-1);bld(31,13,5,4,-1);
+  for(j=1;j<H-1;j++)for(i=1;i<W-1;i++)if(g[j][i]==="g"&&(i*7+j*13+i*j)%11===0&&!NP.some(function(n){return Math.abs(n.x-i)+Math.abs(n.y-j)<=1}))g[j][i]="t";
+  return g.map(function(r){return r.join("")})}
+var SC={world:{map:genWorld(WN),npcs:WN},
+ forge:{map:["xxxxxxxxxx","xFFffffkkx","xffffffffx","xcccffffkx","xffffffffx","xffffffffx","xxxxEExxxx"],
+  npcs:[QN[0],FN("Apprentice",7,4,"#8a4b2a","#222222",["Master Brann says: a wallet is only a keychain. The coins live on the blockchain.","Barkd keeps your Ark keys. The plugin only holds a token."])]},
+ cafe:{map:["xxxxxxxxxxxx","xkkffffffkkx","xffffffffffx","xccccccfffkx","xffffffffffx","xfkffffkfffx","xffffffffffx","xxxxxEExxxxx"],
+  npcs:[QN[2],FN("Regular",3,5,"#4a7ab0","#e8b04a",["Alice takes sats! Small payments are what Ark is made for.","BIP 321 puts an Ark address, a Lightning invoice and an on-chain fallback in one QR code."])]}};
+var DOORS={world:[{x:7,y:6,to:"forge",tx:4,ty:5},{x:28,y:6,to:"cafe",tx:5,ty:6}],
+ forge:[{x:4,y:6,to:"world",tx:7,ty:7},{x:5,y:6,to:"world",tx:7,ty:7}],
+ cafe:[{x:5,y:7,to:"world",tx:28,ty:7},{x:6,y:7,to:"world",tx:28,ty:7}]};
+function enter(sc,x,y){G.sc=sc;MAP=SC[sc].map;NPCS=SC[sc].npcs;P.x=x;P.y=y;P.dx=P.dy=0;P.t=0;G.fade=.3}
+function doorCk(){if(G.wave)return;DOORS[G.sc].forEach(function(d){if(d.x===P.x&&d.y===P.y)enter(d.to,d.tx,d.ty)})}
+var LEVELS=[[0,"Deckhand"],[150,"Boarder"],[350,"First mate"],[550,"Captain"]],BADGES={board:"First board",patient:"Patient one",speed:"Speed demon",merchant:"Merchant",guard:"Guardian"};
+var S,P,M=[],FX=[],keys={},G={live:null,D:null,L:null,I:0,end:0,jr:0,busy:false,shake:0,fade:0,sc:"world",wave:null,log:"",toast:null,sp:0};
+var AC=null,MUTE=false;
+function sfx(f,d,ty,v){if(MUTE)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();var o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.type=ty||"square";o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(Math.max(40,f*.5),t+d);g.gain.setValueAtTime(v||.04,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d)}catch(e){}}
+function jingle(){[523,659,784,1046].forEach(function(f,i){setTimeout(function(){sfx(f,.14,"square",.05)},i*110)})}
+function fmt(n){return n.toLocaleString("en-US")+" sat"}
+function kf(n){return n>=1000?(Math.round(n/100)/10)+"k":""+n}
+function lvl(){var l=LEVELS[0][1];LEVELS.forEach(function(x){if(S.xp>=x[0])l=x[1]});return l}
+function toast(s){G.toast={s:s,t:1.8}}
+function lg(v,p,w){G.log=(v+" "+p+" "+(w||"")).slice(0,38)}
+function ui(){return G.D||G.L||G.I||G.end||G.jr}
+function reset(){S={el:250000,oc:0,pend:0,ark:0,al:0,xp:0,m:0,hp:3,badges:{},tried:false,done:false};
+  P={x:20,y:11,dx:0,dy:0,t:0,fx:0,fy:1,inv:0,atk:0,cd:0,reg:0};M=[];FX=[];G.D=G.L=null;G.I=0;G.end=G.jr=0;G.busy=false;G.wave=null;G.sp=0;G.log="";enter("world",20,11);G.fade=0;
+  if(G.live)snap().catch(function(){})}
+/* ---- world rules ---- */
+function solid(x,y){var c=(MAP[y]||"t")[x]||"t";return "tHwxckF".indexOf(c)>=0||NPCS.some(function(n){return n.x===x&&n.y===y})}
+function occ(x,y,self){return M.some(function(m){return m!==self&&(m.x===x&&m.y===y||m.x+m.dx===x&&m.y+m.dy===y)})}
+function pfree(x,y){return !solid(x,y)&&!occ(x,y)}
+function mfree(x,y,m){return !solid(x,y)&&!occ(x,y,m)&&!(P.x===x&&P.y===y)&&!(P.x+P.dx===x&&P.y+P.dy===y)}
+function spawn(ty,x,y,w){M.push({x:x,y:y,dx:0,dy:0,t:0,hp:ty.hp,ty:ty,w:w,cd:.8,hit:0,wait:.5})}
+function burst(x,y,c){for(var i=0;i<9;i++)FX.push({x:x+8,y:y+8,vx:(Math.random()-.5)*70,vy:(Math.random()-.8)*60,t:.5,c:c})}
+function kill(m){M.splice(M.indexOf(m),1);sfx(520,.15,"triangle",.08);burst(m.x*T,m.y*T,"#fff");S.xp+=m.ty.xp;toast("+"+m.ty.xp+" XP");
+  if(G.wave&&!M.some(function(o){return o.w})){var w=G.wave;G.wave=null;w.res()}}
+function attack(){if(P.cd>0||ui())return;P.cd=.35;P.atk=.16;sfx(320,.08);var a=P.x+P.fx,b=P.y+P.fy;
+  M.slice().forEach(function(m){if(m.x===a&&m.y===b||m.x+m.dx===a&&m.y+m.dy===b){m.hp--;m.hit=.25;if(m.hp<1)kill(m);else if(!m.t&&mfree(m.x+P.fx,m.y+P.fy,m)){m.x+=P.fx;m.y+=P.fy}}})}
+function die(){S.hp=3;M=M.filter(function(m){return!m.w});enter("world",20,11);P.inv=2;
+  if(G.wave){var w=G.wave;G.wave=null;w.rej(DIED)}else toast("You fell. Back to the village.")}
+function step(dx,dy){P.fx=dx;P.fy=dy;if(pfree(P.x+dx,P.y+dy)){P.dx=dx;P.dy=dy;P.t=.0001}}
+function act(){var n=NPCS.filter(function(n){return Math.abs(n.x-P.x)+Math.abs(n.y-P.y)===1})[0];if(n)talk(n)}
+function talk(n){S.hp=3;if(n.facts){G.busy=true;n.fi=n.fi||0;say(n,n.facts[n.fi++%n.facts.length]).then(function(){G.busy=false});return}if(n.ms.indexOf(S.m)>=0&&!S.done)run(n,n.f);else{G.busy=true;say(n,S.m>n.ms[n.ms.length-1]?n.d:n.w).then(function(){G.busy=false})}}
+function run(n,fn){G.busy=true;fn(n).catch(function(e){return say(n,e===DIED?"The tide knocked you out. Talk to me to try again.":"Trouble: "+(e&&e.message||e))}).then(function(){G.busy=false})}
+/* ---- dialog, loading, input ---- */
+function wrap(s,n){var o=[];s.split("\n").forEach(function(p){var l="";p.split(" ").forEach(function(w){while(w.length>n){if(l){o.push(l);l=""}o.push(w.slice(0,n));w=w.slice(n)}
+  if((l+" "+w).trim().length>n){o.push(l);l=w}else l=(l+" "+w).trim()});o.push(l)});return o}
+function say(n,text,ch){return new Promise(function(res){var L=wrap(text,34),pg=[],k=ch?3:4;for(var i=0;i<L.length;i+=k)pg.push(L.slice(i,i+k));
+  G.D={n:n.n,pg:pg,pi:0,t0:performance.now(),ch:ch||null,sel:0,res:res}})}
+function cnt(D){return D.pg[D.pi].join("").length}
+function adv(){var D=G.D;if(!D)return;var len=cnt(D),sh=RM?len:Math.floor((performance.now()-D.t0)/22);
+  if(sh<len){D.t0=performance.now()-len*22;return}
+  if(D.pi<D.pg.length-1){D.pi++;D.t0=performance.now();return}
+  G.D=null;sfx(700,.03,"square",.03);D.res(D.ch?D.sel:0)}
+function load(label,ms){return new Promise(function(res){G.L={label:label,t0:performance.now(),ms:RM?1:ms,res:res}})}
+function until(test,label){return new Promise(function(res){var busy=0;G.L={label:label,t0:performance.now(),ms:0,last:0,poll:function(){if(busy)return;busy=1;
+  snap().then(function(s){busy=0;if(test(s)){G.L=null;res(s)}}).catch(function(e){busy=0;if(G.L)G.L.label=String(e.message).slice(0,30)})}}})}
+function ask(label,def){return new Promise(function(res){var i=$("in");G.I=1;G.Il=label;i.value=def||"";i.hidden=false;i.focus();
+  function done(v){i.hidden=true;G.I=0;i.onkeydown=null;CV.focus();res(v)}
+  i.onkeydown=function(e){e.stopPropagation();if(e.key==="Enter")done(i.value.trim());else if(e.key==="Escape")done("")}})}
+/* ---- barkd bridge (live) ---- */
+function call(n,b){return fetch("/api/"+n,{method:"POST",headers:{"Content-Type":"application/json","X-Ark-Quest":"1"},body:JSON.stringify(b||{})}).then(function(r){return r.json().then(function(j){if(!r.ok){var e=new Error(j.error||"HTTP "+r.status);e.kind=j.kind;throw e}return j.result})})}
+function snap(){return call("snapshot").catch(function(e){if(e.kind!=="no_wallet")throw e;return call("create_wallet").then(function(){lg("POST","/wallet/create");return call("snapshot")})}).then(function(s){S.oc=s.onchain_confirmed_sat;S.pend=s.ark_pending_board_sat;S.ark=s.ark_spendable_sat;return s})}
+function feeOf(){return call("history").then(function(h){var x=h[0]?h[0].fee_sat:0;return x?fmt(x):"no fee"})}
+async function win(n,msg,xp,badge){S.xp+=xp;if(badge)S.badges[badge]=1;S.m++;toast("+"+xp+" XP");jingle();await say(n,msg+" +"+xp+" XP");
+  if(S.m>=5){S.done=true;G.end=1;G.hist=null;if(G.live)call("history").then(function(h){G.hist=h.slice(0,4)}).catch(function(){})}}
+/* ---- quests ---- */
+async function m0(n){
+  await say(n,"Welcome, hero! barkd is my forge: it keeps your Ark coins. First we fill it from your on-chain wallet.");
+  var a="tb1pforge7xk4q";
+  if(G.live){a=await call("new_onchain_address");if(navigator.clipboard)navigator.clipboard.writeText(a).catch(function(){})}
+  lg("POST","/onchain/addresses/next","fresh address");
+  await say(n,"Send coins to this address"+(G.live?" (copied)":"")+":\n"+a);
+  if(G.live){if(G.live.fake){await call("faucet");lg("CALL","faucet")}await until(function(s){return s.onchain_confirmed_sat>0},"Waiting for funds...")}
+  else{S.el-=1e5;await load("Waiting for 1 confirmation...",2500);S.oc+=1e5;lg("GET","/onchain/balance","100,000 sat")}
+  await win(n,"Funds confirmed in barkd: "+fmt(S.oc)+".",100)}
+async function m1(n){
+  await say(n,"Boarding turns on-chain coins into Ark funds. They stay pending until the board confirms, then they are instant to spend.");
+  if(await say(n,"Board everything now?",["Board all","Not yet"]))return;
+  lg("POST","/boards/board-all","all confirmed funds");
+  if(G.live){await call("board_all");await snap();await until(function(s){return s.ark_spendable_sat>0&&!s.ark_pending_board_sat},"Board confirming...")}
+  else{S.pend=S.oc;S.oc=0;await load("Board transaction confirming...",2500);S.ark+=S.pend;S.pend=0}
+  await win(n,"You are on the Ark: "+fmt(S.ark)+".",100,"board")}
+async function m2(n){
+  await say(n,"Hi! One coffee is 5,000 sat. Pay on-chain from your Ark balance, or pay with Ark. Only the Ark payment is instant.");
+  var f=G.live&&G.live.fake;
+  for(;;){
+    var c=await say(n,"How do you pay?",["Pay with Ark (instant)","Pay on-chain (slow)"]),fee;
+    if(c===0){
+      if(G.live){var d=await ask("Alice's Ark address (tark1...)",f?"tark1qalicecafe0000000000":"");if(!d)return;
+        await call("send",{destination:d,amount_sat:5000});fee=await feeOf();await snap()}else{S.ark-=5010;fee="10 sat"}
+      lg("POST","/wallet/send","5000 sat");S.al+=5000;await say(n,"Instant! Fee: "+fee+". Thank you!");
+      return win(n,"Coffee paid with Ark.",S.tried?150:100,"speed")}
+    if(G.live){var o=await ask("Alice's on-chain address (tb1...)",f?"tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx":"");if(!o)return;
+      await call("send_onchain",{destination:o,amount_sat:5000});fee=await feeOf();await snap()}
+    else{await load("Waiting for a block...",3000);S.ark-=6200;fee="1,200 sat"}
+    lg("POST","/wallet/send-onchain","5000 sat");S.al+=5000;S.tried=true;S.badges.patient=1;toast("Badge: Patient one");
+    await say(n,"Paid, but it took a block and cost "+fee+". Try Ark next time!")}}
+async function m3(n){
+  await say(n,"Now get paid like a pro. One BIP 321 request carries an Ark address, a Lightning invoice and an on-chain fallback.");
+  var a=[1000,3000,10000],v=a[await say(n,"How much should the request ask?",a.map(fmt))],r;
+  lg("POST","/wallet/bip321",fmt(v));
+  r=G.live?await call("receive_uri",{amount_sat:v,onchain:true}):{ark:"tark1qz8e0v4h7ak",bolt11:"lntbs30u1px9q2",onchain:"tb1qw508d6f3t4"};
+  if(G.live&&navigator.clipboard&&r.bip321)navigator.clipboard.writeText(r.bip321).catch(function(){});
+  await say(n,"Ark: "+(r.ark||"-")+"\nLightning: "+(r.bolt11||"-")+"\nOn-chain: "+(r.onchain||"-"));
+  if(!G.live){S.al=Math.max(0,S.al-v);S.ark+=v;await say(n,"I paid "+fmt(v)+" right away. Instant!")}
+  await win(n,"Request ready for "+fmt(v)+".",100,"merchant")}
+async function m4(n){
+  await say(n,"Tide monsters rise to steal your coins! Strike them with your sword: Space, or the A button. Stay on your feet.");
+  for(var w=1;w<=2;w++){await say(n,w===2?"Wave 2 of 2. The Kraken itself rises, with two crabs at its side!":"Wave 1 of 2. Hold the beach!");await fight(w);lg("SIM","/wallet/refresh/all","wave "+w+" held")}
+  await win(n,"The Kraken sinks. The tide is turned.",200,"guard")}
+function fight(w){return new Promise(function(res,rej){G.wave={res:res,rej:rej};if(w===2){spawn(BOSS,20,21,1);spawn(CRAB,12,21,1);spawn(CRAB,28,21,1)}else for(var i=0;i<3;i++)spawn(CRAB,14+i*6,21,1)})}
+/* ---- input ---- */
+var KM={a:"ArrowLeft",d:"ArrowRight",w:"ArrowUp",s:"ArrowDown"};
+function press(k){
+  if(k==="q"){if(G.jr)G.jr=0;else if(!ui())G.jr=1;return}
+  if(G.end){reset();return}
+  if(G.jr){G.jr=0;return}
+  if(G.D)return adv();
+  if(G.L||G.I)return;
+  if(k==="a")attack();else if(!G.busy)act()}
+addEventListener("keydown",function(e){if(e.target.tagName==="INPUT"||e.ctrlKey||e.metaKey||e.altKey)return;var k=KM[e.key.toLowerCase()]||e.key;
+  if(k.indexOf("Arrow")===0){keys[k]=1;e.preventDefault();var D=G.D;
+    if(D&&D.ch&&!e.repeat&&D.pi===D.pg.length-1)D.sel=(D.sel+(k==="ArrowDown"||k==="ArrowRight"?1:k==="ArrowUp"||k==="ArrowLeft"?-1:0)+D.ch.length)%D.ch.length}
+  else if(k===" "||k==="j"||k==="J"){e.preventDefault();press("a")}
+  else if(k==="e"||k==="E"||k==="Enter"){e.preventDefault();press("e")}
+  else if(k==="q"||k==="Q"||k==="Tab"){e.preventDefault();press("q")}
+  else if(k==="m"||k==="M"){MUTE=!MUTE;toast(MUTE?"Sound off":"Sound on")}
+  else if(G.D&&G.D.ch&&/^[1-9]$/.test(k)&&+k<=G.D.ch.length){G.D.sel=+k-1;press("e")}});
+addEventListener("keyup",function(e){delete keys[KM[e.key.toLowerCase()]||e.key]});
+CV.addEventListener("click",function(){press("e")});
+[].forEach.call(document.querySelectorAll(".pad button"),function(b){var k=b.getAttribute("data-k"),a=b.getAttribute("data-a");
+  if(a){b.onclick=function(){press(a)};return}
+  b.onpointerdown=function(e){e.preventDefault();keys[k]=1};b.onpointerup=b.onpointerleave=b.onpointercancel=function(){delete keys[k]}});
+/* ---- update ---- */
+function update(dt){
+  G.shake-=dt;G.fade-=dt;
+  if(G.toast&&(G.toast.t-=dt)<=0)G.toast=null;
+  FX=FX.filter(function(f){f.t-=dt;f.x+=f.vx*dt;f.y+=f.vy*dt;f.vy+=120*dt;return f.t>0});
+  if(G.L){var L=G.L,now=performance.now();if(L.poll&&now-L.last>1500){L.last=now;L.poll()}
+    if(L.ms&&now-L.t0>=L.ms){G.L=null;L.res()}}
+  if(ui())return;
+  P.cd-=dt;P.atk-=dt;P.inv-=dt;
+  if(S.hp<3&&(P.reg+=dt)>15){P.reg=0;S.hp++}
+  if(P.t>0){P.t+=dt/.16;if(P.t>=1){P.x+=P.dx;P.y+=P.dy;P.t=0;P.dx=P.dy=0;doorCk()}}
+  if(!P.t){var k=keys.ArrowLeft?[-1,0]:keys.ArrowRight?[1,0]:keys.ArrowUp?[0,-1]:keys.ArrowDown?[0,1]:null;if(k)step(k[0],k[1])}
+  M.slice().forEach(function(m){
+    m.cd-=dt;m.hit-=dt;
+    if(m.t>0){m.t+=dt/m.ty.step;if(m.t>=1){m.x+=m.dx;m.y+=m.dy;m.dx=m.dy=0;m.t=0;m.wait=.15+Math.random()*.4}return}
+    var ax=P.x-m.x,ay=P.y-m.y;
+    if(Math.abs(ax)+Math.abs(ay)===1){if(m.cd<=0&&P.inv<=0){S.hp--;G.shake=.25;sfx(110,.25,"sawtooth",.07);P.inv=1.1;m.cd=1.3;burst(P.x*T,P.y*T,"#d6453a");if(S.hp<1)die()}return}
+    if((m.wait-=dt)>0)return;
+    var o=[],r=Math.random();
+    if(m.w||Math.abs(ax)+Math.abs(ay)<7)o=Math.abs(ax)>=Math.abs(ay)?[[Math.sign(ax),0],[0,Math.sign(ay)]]:[[0,Math.sign(ay)],[Math.sign(ax),0]];
+    else if(r<.6)o=[[[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)]];
+    for(var i=0;i<o.length;i++)if((o[i][0]||o[i][1])&&mfree(m.x+o[i][0],m.y+o[i][1],m)){m.dx=o[i][0];m.dy=o[i][1];m.t=.0001;return}
+    m.wait=.3});
 }
-function api(verb,path,what){
-  S.log.push('<em>'+verb+"</em> "+path+"   "+what);S.log=S.log.slice(-4);$("api").innerHTML=S.log.join("\n")}
-function hit(i){var d=$("d"+i);d.classList.add("hit");later(function(){d.classList.remove("hit")},700)}
-function fly(a,b,ms,cb){
-  var r=$("route").getBoundingClientRect(),c=$("coin");
-  function mid(i){var x=$("d"+i).getBoundingClientRect();return{x:x.left-r.left+x.width/2-13,y:x.top-r.top+x.height/2-13}}
-  var p=mid(a),q=mid(b);
-  c.style.transition="none";c.style.opacity="1";c.style.transform="translate("+p.x+"px,"+p.y+"px)";
-  void c.offsetWidth;
-  c.style.transition=RM?"none":"transform "+ms+"ms ease-in-out";c.style.transform="translate("+q.x+"px,"+q.y+"px)";
-  later(function(){c.style.opacity="0";hit(b);if(cb)cb()},ms+30)}
-function progress(ms,label,cb){
-  var st=$("stage"),w=document.createElement("div");
-  w.innerHTML='<p class="note">'+label+'</p><div class="bar"><i></i></div>';st.appendChild(w);
-  var i=w.querySelector("i"),t0=Date.now();
-  var t=every(function(){var f=RM?1:Math.min(1,(Date.now()-t0)/ms);i.style.width=f*100+"%";
-    if(f>=1){clearInterval(t);w.remove();cb()}},60)}
-function gain(xp,badge){S.xp+=xp;if(badge)S.badges[badge]=1;S.m++;render()}
-function ready(msg,xp){
-  var st=$("stage");var d=document.createElement("div");
-  d.innerHTML='<p class="win">'+msg+" +"+xp+' XP</p>';
-  var b=document.createElement("button");b.textContent=S.m>=MISSIONS.length?"See your result":"Next mission";
-  b.onclick=function(){S.m>=MISSIONS.length?finale():mission(S.m)};d.appendChild(b);st.appendChild(d);b.focus()}
-function stage(title,text){$("stage").innerHTML="<h2>"+title+"</h2><p>"+text+"</p>";return $("stage")}
-function btn(label,fn,alt){var b=document.createElement("button");b.textContent=label;if(alt)b.className="alt";b.onclick=function(){fn(b)};$("stage").appendChild(b);return b}
-
-function mission(i){
-  clearAll();render();
-  [m0,m1,m2,m3,m4][i]()}
-
-function m0(){
-  stage("Fund barkd from Electrum","barkd keeps your Ark wallet. To fill it, pay its on-chain address from your Electrum wallet. The plugin copies that address into Electrum's own Send tab for you.");
-  btn("Send 100,000 sat from Electrum",function(b){
-    b.disabled=true;api("POST","/onchain/addresses/next","fresh barkd address, placed in Electrum's Send tab");
-    S.el-=100000;render();fly(0,1,900,function(){
-      progress(2800,"Waiting for 1 confirmation...",function(){
-        S.oc+=100000;render();api("GET","/onchain/balance","confirmed: 100,000 sat");
-        gain(100,null);ready("Funds confirmed in barkd.",100)})})})}
-
-function m1(){
-  stage("Board the Ark","Boarding turns on-chain coins into Ark funds. They show as pending until the board transaction confirms, then they are spendable instantly.");
-  btn("Board all on-chain funds",function(b){
-    b.disabled=true;api("POST","/boards/board-all","all confirmed funds go into Ark");
-    S.pend=S.oc;S.oc=0;render();fly(1,2,900,function(){
-      progress(2200,"Board transaction confirming...",function(){
-        S.ark+=S.pend;S.pend=0;render();api("GET","/wallet/balance","spendable: "+fmt(S.ark));
-        gain(100,"board");ready("You are on the Ark.",100)})})})}
-
-function m2(){
-  stage("Buy Alice a coffee","Alice's café wants 5,000 sat. You can pay on-chain from your Ark balance, or pay with Ark. Try both if you are curious: only the Ark payment completes the mission.");
-  var st=$("stage"),res=document.createElement("p");res.className="note";
-  var b1=btn("Pay on-chain (slow, higher fee)",function(b){
-    b.disabled=true;api("POST","/wallet/send-onchain","5,000 sat to an on-chain address");
-    S.tried=true;fly(2,3,900,function(){progress(3200,"Waiting for a block...",function(){
-      S.ark-=6200;S.al+=5000;render();b.disabled=false;
-      res.innerHTML='On-chain took a block and cost <b>1,200 sat</b> in fees. Now try Ark.';
-      S.badges.patient=1;render()})})},true);
-  btn("Pay with Ark (instant)",function(b){
-    b.disabled=true;b1.disabled=true;api("POST","/wallet/send","5,000 sat to an Ark address");
-    S.ark-=5010;S.al+=5000;render();fly(2,3,500,function(){
-      res.innerHTML='Instant, fee <b>10 sat</b>. Same coffee, no waiting.';
-      gain(100,"speed");if(S.tried)S.xp+=50;render();ready("Coffee paid with Ark.",S.tried?150:100)})});
-  st.appendChild(res)}
-
-function qrGrid(){var s=7,h="";for(var r=0;r<21;r++)for(var c=0;c<21;c++){
-  var fin=(r<7&&c<7)||(r<7&&c>13)||(r>13&&c<7),on;
-  if(fin){var rr=r%14%7,cc=c%14%7;on=rr===0||rr===6||cc===0||cc===6||(rr>1&&rr<5&&cc>1&&cc<5)}
-  else{s=(s*1103515245+12345)&0x7fffffff;on=(s>>8)%3===0}
-  h+='<i class="'+(on?"k":"")+'"></i>'}return h}
-function m3(){
-  stage("Get paid with one QR","One BIP 321 code can carry an Ark address, a Lightning invoice and an on-chain fallback. The payer's wallet picks what it understands.");
-  var st=$("stage"),amt=document.createElement("input");amt.value="3000";amt.setAttribute("aria-label","Amount in sat");
-  st.appendChild(amt);var box=document.createElement("div");
-  btn("Generate payment request",function(b){
-    var n=Math.max(1,parseInt(amt.value,10)||3000);b.disabled=true;amt.disabled=true;
-    api("POST","/wallet/bip321","amount "+fmt(n)+", with on-chain fallback");
-    box.innerHTML='<div class="rx"><div class="qr">'+qrGrid()+'</div><div class="addr"><b>Ark</b><br>tark1qz8e0v4...h7ak<br><br><b>Lightning</b><br>lntbs30u1p...x9q2<br><br><b>On-chain</b><br>tb1qw508d6...f3t4</div></div>';
-    var go=document.createElement("button");go.textContent="Alice pays it";
-    go.onclick=function(){go.disabled=true;fly(3,2,500,function(){S.al=Math.max(0,S.al-n);S.ark+=n;render();
-      gain(100,"merchant");ready("Received "+fmt(n)+" instantly.",100)})};
-    box.appendChild(go);st.appendChild(box)});
-  st.appendChild(box)}
-
-function m4(){
-  stage("Keep your coins alive","Ark coins (VTXOs) expire if you leave them. Refresh each one before its bar empties. Survive 15 seconds.");
-  var st=$("stage"),vt=document.createElement("div"),info=document.createElement("p");vt.className="vt";info.className="note";
-  var rates=[100/9,100/11,100/14],lvl=[100,100,100],rows=[];
-  rates.forEach(function(r,i){
-    var row=document.createElement("div");row.innerHTML="<span>Coin "+(i+1)+'</span><div class="bar"><i></i></div>';
-    var rb=document.createElement("button");rb.textContent="Refresh";rb.disabled=true;
-    rb.onclick=function(){lvl[i]=100;api("POST","/wallet/refresh/all","coin "+(i+1)+" renewed")};
-    row.appendChild(rb);vt.appendChild(row);rows.push({row:row,bar:row.querySelector(".bar"),i:row.querySelector("i"),b:rb})});
-  st.appendChild(vt);st.appendChild(info);
-  btn("Start the tide",function(b){
-    b.disabled=true;rows.forEach(function(r){r.b.disabled=false});var t0=Date.now(),last=t0;
-    var t=every(function(){
-      var now=Date.now(),dt=(now-last)/1000;last=now;var el=(now-t0)/1000;if(RM)el=15;
-      info.textContent="Time left: "+Math.max(0,15-el).toFixed(1)+" s";
-      var dead=false;
-      rows.forEach(function(r,k){lvl[k]-=rates[k]*dt;r.i.style.width=Math.max(0,lvl[k])+"%";r.bar.className="bar"+(lvl[k]<30?" low":"");if(lvl[k]<=0)dead=true});
-      if(dead){clearInterval(t);rows.forEach(function(r){r.b.disabled=true});
-        info.innerHTML='<span class="lose">A coin expired.</span> Refresh sooner next time.';
-        var rt=document.createElement("button");rt.textContent="Try again";rt.onclick=function(){mission(4)};st.appendChild(rt);rt.focus()}
-      else if(el>=15){clearInterval(t);rows.forEach(function(r){r.b.disabled=true});gain(150,"guard");ready("All coins renewed in time.",150)}},100)})}
-
-function finale(){
-  S.done=true;render();
-  var st=$("stage");
-  st.innerHTML="<h2>You boarded the Ark</h2><p>You finished as <b>"+$("lvl").textContent+"</b> with "+S.xp+" XP. In the real plugin each step is a button:</p>"+
-  "<p class='note'>Overview: fund barkd from Electrum, board, see balances. Receive: one BIP 321 QR. Send: Ark, Lightning or on-chain. History: every movement. The next feature on the roadmap is the coin-refresh game you just played, as a real button.</p>";
-  btn("Play again",reset)}
-
-reset();
+/* ---- render ---- */
+function box(x,y,w,h){R(X,"#c8923a",x,y,w,h);R(X,"#1d140d",x+2,y+2,w-4,h-4);R(X,"#6b4a22",x+3,y+3,w-6,1)}
+function heart(x,y,on){var c=on?"#e0453a":"#4a2a2a";R(X,c,x+1,y,2,1);R(X,c,x+4,y,2,1);R(X,c,x,y+1,7,2);R(X,c,x+1,y+3,5,1);R(X,c,x+2,y+4,3,1);R(X,c,x+3,y+5,1,1);if(on)R(X,"#ff9a8f",x+1,y+1,1,1)}
+function dirOf(){return P.fy>0?0:P.fx<0?1:P.fx>0?2:3}
+function hintTxt(){if(G.wave)return"Defeat the tide! Monsters left: "+M.filter(function(m){return m.w}).length;if(S.done||S.m>=5)return"All quests done. Well played!";var n=QN.filter(function(n){return n.ms.indexOf(S.m)>=0})[0];return("Quest "+(S.m+1)+"/5: "+n.n+", "+n.loc).slice(0,38)}
+function badgeList(y){Object.keys(BADGES).forEach(function(k,i){tx((S.badges[k]?"[x] ":"[ ] ")+BADGES[k],60,y+i*12,S.badges[k]?"#F5A524":"#8aa0ad")})}
+function render(ts){
+  X.setTransform(2,0,0,2,G.shake>0&&!RM?(Math.random()-.5)*6:0,G.shake>0&&!RM?(Math.random()-.5)*6:0);
+  var wf=RM?0:(ts/500|0)%2,x,y,c,t,e=Math.min(1,P.t),mw=MAP[0].length*T,mh=MAP.length*T,
+  cx=mw<=320?(mw-320)/2:Math.min(mw-320,Math.max(0,(P.x+P.dx*e)*T+8-160)),cy=mh<=224?(mh-224)/2:Math.min(mh-224,Math.max(0,(P.y+P.dy*e)*T+8-112));
+  cx=Math.round(cx);cy=Math.round(cy);R(X,"#000",0,0,320,224);X.save();X.translate(-cx,-cy);
+  for(y=Math.max(0,cy/T|0);y<Math.min(MAP.length,(cy+224)/T+1);y++)for(x=Math.max(0,cx/T|0);x<Math.min(MAP[0].length,(cx+320)/T+1);x++){
+    c=MAP[y][x];t=c==="H"?(MAP[y+1]&&MAP[y+1][x]==="H"?TI.R:TI.W):c==="w"?TI.w[wf]:TI[c];X.drawImage(t,x*T,y*T)}
+  var E=NPCS.map(function(n){return{x:n.x*T,y:n.y*T,s:n.s[wf]}});
+  M.forEach(function(m){var k=Math.min(1,m.t);if(m.hit>0&&(ts/60|0)%2)return;E.push({x:(m.x+m.dx*k)*T,y:(m.y+m.dy*k)*T,s:m.ty.s[wf]})});
+  if(!(P.inv>0&&(ts/80|0)%2))E.push({x:(P.x+P.dx*e)*T,y:(P.y+P.dy*e)*T,s:HERO[dirOf()][P.t?(P.t*3|0)%2:0]});
+  E.sort(function(a,b){return a.y-b.y}).forEach(function(o){X.drawImage(o.s,Math.round(o.x),Math.round(o.y)-2)});
+  if(P.atk>0){var sx=(P.x+P.fx)*T,sy=(P.y+P.fy)*T;if(P.fx)R(X,"#fff",sx+2,sy+5,12,3);else R(X,"#fff",sx+6,sy+1,3,12)}
+  FX.forEach(function(f){R(X,f.c,Math.round(f.x),Math.round(f.y),2,2)});
+  if(!ui())NPCS.forEach(function(n){var q=!S.done&&n.ms.indexOf(S.m)>=0&&!G.busy,near=!G.busy&&Math.abs(n.x-P.x)+Math.abs(n.y-P.y)===1;
+    if(q)tx("!",n.x*T+8,n.y*T-8+(RM?0:Math.round(Math.sin(ts/200)*2)),"#F5A524","center");
+    if(near)tx("E: "+n.n,n.x*T+8,n.y*T-(q?17:10),"#fff","center")});
+  X.restore();
+  R(X,"rgba(8,16,28,.85)",0,0,320,22);for(var i=0;i<3;i++)heart(3+i*10,3,i<S.hp);
+  tx(lvl()+" "+S.xp+"xp",36,3,"#F5A524");
+  tx("Wallet "+(G.live?"?":kf(S.el))+" Forge "+kf(S.oc)+" Ark "+kf(S.ark)+(S.pend?"+"+kf(S.pend):"")+" Cafe "+kf(S.al),3,13,"#9fd6cf");
+  if(G.toast)tx(G.toast.s,160,26,"#F5A524","center");
+  var D=G.D;
+  if(!D&&!G.L&&!G.I){R(X,"rgba(8,16,28,.85)",0,205,320,19);tx(hintTxt(),3,207,"#fff");tx(G.log,3,216,"#7fb0b8")}
+  if(D){box(4,132,312,88);box(12,122,8*D.n.length+12,14);tx(D.n,18,126,"#F5A524");
+    var len=cnt(D),sh=RM?len:Math.floor((performance.now()-D.t0)/22),rem=sh,last=D.pi===D.pg.length-1;
+    D.pg[D.pi].forEach(function(l,i){tx(l.slice(0,Math.max(0,rem)),12,146+i*10);rem-=l.length});
+    if(sh>=len){if(last&&D.ch)D.ch.forEach(function(c,i){tx((i===D.sel?"> ":"  ")+c,12,146+(D.pg[D.pi].length+i)*10+2,i===D.sel?"#F5A524":"#cfc6ae")});
+      else if((ts/350|0)%2){R(X,"#F5A524",300,208,5,1);R(X,"#F5A524",301,209,3,1);R(X,"#F5A524",302,210,1,1)}}}
+  if(G.L){box(30,150,260,40);tx(G.L.label,40,158);R(X,"#6b4a22",40,174,240,8);
+    if(G.L.ms)R(X,"#F5A524",40,174,240*Math.min(1,(performance.now()-G.L.t0)/G.L.ms),8);else R(X,"#F5A524",40+((ts/8)%200),174,40,8)}
+  if(G.I){box(4,150,312,40);tx(G.Il,12,156,"#F5A524");tx("Enter: confirm. Esc: cancel",12,194,"#8aa0ad")}
+  if(G.end||G.jr){R(X,"rgba(8,16,28,.93)",0,0,320,224);
+    tx(G.end?"You boarded the Ark!":"Journal",160,22,"#F5A524","center");tx(lvl()+", "+S.xp+" XP",160,38,"#fff","center");
+    badgeList(62);if(G.jr)tx(hintTxt(),160,134,"#fff","center");
+    if(G.end&&G.hist)G.hist.forEach(function(r,i){tx((r.type+" "+(r.amount_sat>0?"+":"")+r.amount_sat).slice(0,38),60,134+i*10,"#7fb0b8")});
+    tx(G.end?"E: play again":"Q: close",160,204,"#8aa0ad","center")}
+  if(G.fade>0)R(X,"rgba(0,0,0,"+Math.min(1,G.fade/.3)+")",0,0,320,224)}
+function frame(ts){requestAnimationFrame(frame);if(!S)return;var dt=Math.min(.05,(ts-(frame.l||ts))/1000);frame.l=ts;update(dt);render(ts)}
+requestAnimationFrame(frame);
+fetch("/api/mode",{headers:{"X-Ark-Quest":"1"}}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.live)G.live=j}).catch(function(){}).then(function(){
+  $("mode").textContent=G.live?(G.live.fake?"Live: real plugin calls, fake client.":"Live: connected to barkd."):"Simulation (run script/bridge.py for live mode).";reset()});
 })();
-</script>
-</body>
-</html>
+</script></body></html>
