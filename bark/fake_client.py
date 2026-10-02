@@ -22,6 +22,45 @@ def _check_amount(amount, *, required=False):
     return amount
 
 
+_B32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
+
+
+def _bech32_polymod(values) -> int:
+    gen = (0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3)
+    chk = 1
+    for v in values:
+        top = chk >> 25
+        chk = ((chk & 0x1ffffff) << 5) ^ v
+        for i in range(5):
+            if (top >> i) & 1:
+                chk ^= gen[i]
+    return chk
+
+
+def segwit_v0_address(hrp: str, program: bytes) -> str:
+    """Indirizzo segwit v0 (bech32, BIP 173) valido per `program` (20 o 32 byte)."""
+    # 8 bit -> 5 bit
+    acc, bits, data = 0, 0, []
+    for byte in program:
+        acc = (acc << 8) | byte
+        bits += 8
+        while bits >= 5:
+            bits -= 5
+            data.append((acc >> bits) & 31)
+    if bits:
+        data.append((acc << (5 - bits)) & 31)
+    data = [0] + data   # versione testimone 0
+    hrp_exp = [ord(c) >> 5 for c in hrp] + [0] + [ord(c) & 31 for c in hrp]
+    polymod = _bech32_polymod(hrp_exp + data + [0] * 6) ^ 1
+    checksum = [(polymod >> 5 * (5 - i)) & 31 for i in range(6)]
+    return hrp + '1' + ''.join(_B32_CHARSET[d] for d in data + checksum)
+
+
+def fake_onchain_address(n: int) -> str:
+    """Indirizzo signet (tb1q...) finto ma VALIDO: Electrum lo accetta nella Send tab."""
+    return segwit_v0_address('tb', hashlib.sha256(f'fake-addr-{n}'.encode()).digest()[:20])
+
+
 def _fake_txid(n: int) -> str:
     return hashlib.sha256(f'fake-tx-{n}'.encode()).hexdigest()
 
@@ -130,7 +169,7 @@ class FakeBarkClient:
         time.sleep(0.1)
         with self._lock:
             self._require_wallet()
-            return f'tb1qfakefakefakefakefakefake{self._next():06d}'
+            return fake_onchain_address(self._next())
 
     def receive_uri(self, amount_sat=None, label=None, message=None, onchain=True) -> dict:
         time.sleep(0.2)
@@ -141,7 +180,7 @@ class FakeBarkClient:
             ark = f'tark1qfakefakefakefakefakefakefake{n:06d}'
             # come probabile barkd reale: l'invoice Lightning solo se c'è un importo
             bolt11 = f'lntbsfakeinvoice{n:06d}fakefakefake' if amount_sat else None
-            oc = f'tb1qfakefakefakefakefakefake{n:06d}' if onchain else None
+            oc = fake_onchain_address(n) if onchain else None
             params = [f'ark={ark}']
             if bolt11:
                 params.append(f'lightning={bolt11}')

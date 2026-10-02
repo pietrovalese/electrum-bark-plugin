@@ -12,7 +12,7 @@ with barkd_client.ApiClient(cfg) as client:
     print("Wallet esiste:", wallet.wallet_exists())
     print("Connesso al server Ark:", wallet.connected())
 
-    onchain.onchain_sync()                       # allinea con la chain
+    onchain.onchain_sync()                       
     print("Indirizzo on-chain:", onchain.onchain_address())
     print("Saldo on-chain:", onchain.onchain_balance())
     print("Indirizzo Ark:", wallet.address().address)

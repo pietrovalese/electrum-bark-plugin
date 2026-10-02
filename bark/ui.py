@@ -430,7 +430,13 @@ class BarkTab(QWidget):
     def _prefill_electrum_send(self, address):
         _copy_to_clipboard(address)
         try:
-            self.window.send_tab.set_payment_identifier(f'bitcoin:{address}')
+            send_tab = self.window.send_tab
+            send_tab.set_payment_identifier(f'bitcoin:{address}')
+            # Electrum non solleva errori per un indirizzo non valido: lo segna INVALID e basta
+            payto = getattr(send_tab, 'payto_e', None)
+            pi = getattr(payto, 'payment_identifier', None)
+            if pi is not None and not pi.is_valid():
+                raise ValueError('rejected by the Electrum Send tab')
             self.window.show_send_tab()
             self.status.setText(_(
                 "Electrum's Send tab now pays barkd's address (also copied to the "

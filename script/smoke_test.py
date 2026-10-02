@@ -1,10 +1,8 @@
-"""Controlla barkd e il client Python senza Electrum.
-
-Prerequisiti: barkd avviato (./script/run_barkd.sh) e BARKD_TOKEN esportato
-(export BARKD_TOKEN=$(./script/barkd_token.sh)). Host diverso: BARKD_HOST.
-
-Stampa l'URL di barkd e un'istantanea dei saldi (creando il wallet su signet se manca),
-poi un nuovo indirizzo on-chain da usare per finanziare barkd.
+""" 
+Check barkd and the Python client without Electrum. 
+Prerequisites: barkd must be running (./script/run_barkd.sh) and BARKD_TOKEN must be exported: export BARKD_TOKEN=$(./script/barkd_token.sh) 
+Use BARKD_HOST to connect to a different host. 
+Print the barkd URL and a balance snapshot (creating the wallet on signet if it does not exist), then generate a new on-chain address to use for funding barkd. 
 """
 import json
 import pathlib
