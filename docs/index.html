@@ -600,9 +600,7 @@ function frame(ts){requestAnimationFrame(frame);if(!S)return;var dt=Math.min(.05
 
 requestAnimationFrame(frame);
 
-fetch("/api/mode",{headers:{"X-Ark-Quest":"1"}}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.live)G.live=j}).catch(function(){}).then(function(){
-
-  $("mode").textContent=G.live?(G.live.fake?"Live: real plugin calls, fake client.":"Live: connected to barkd."):"Simulation (run script/bridge.py for live mode).";reset()});
+$("mode").textContent="Simulation: no wallet or network is used.";reset();
 
 })();
 

@@ -26,7 +26,8 @@
 15. [Packaging and distribution](#15-packaging-and-distribution)
 16. [Troubleshooting](#16-troubleshooting)
 17. [Security notes](#17-security-notes)
-18. [References](#20-references)
+18. [References](#18-references)
+19. [Changelog](#19-changelog)
 
 ---
 
@@ -92,8 +93,8 @@ Design rules (they explain most of the code):
 | Component | Version used | Notes |
 |---|---|---|
 | OS | Linux | Commands in this document assume Linux (Debian/Ubuntu package names); barkd availability on other OSes per Second's docs |
-| Python | 3.10 (author) / 3.12 (test run) | 3.10+ |
-| Electrum (from source) | **4.8.2** (main branch, Oct 2026) | Plugin API changes between versions; pin your checkout |
+| Python | 3.10 (author; the cached test bytecode is CPython 3.10) | 3.10+ |
+| Electrum (from source) | **4.8.2** (as reported by the author; confirm with `git describe --tags`) | Plugin API changes between versions; pin your checkout |
 | barkd | **0.7.1** | the version the author ran |
 | `barkd-client` (PyPI) | **0.7.2** | pinned in `requirements.txt` |
 | PyQt6 | any recent | installed with Electrum's GUI deps |
@@ -155,7 +156,7 @@ cd electrum-bark-plugin
 pip install -r requirements-dev.txt      # barkd-client + pytest
 ```
 
-If your checkout predates this documentation, make sure the files match the structure in §12, and delete the obsolete `script/smoke_test2.py` and `script/test_client.py`.
+`requirements-dev.txt` includes `requirements.txt` and adds pytest. If your checkout predates version 0.1.1, make sure the files match the structure in §12; the obsolete `script/smoke_test2.py` and `script/test_client.py` were removed in 0.1.1.
 
 ### 6.3 barkd
 
@@ -228,10 +229,11 @@ export BARKD_TOKEN=$(~/hackathon/electrum-bark-plugin/script/barkd_token.sh)   #
 ```
 
 1. Create or open a **signet** wallet (a throwaway one).
-2. **Tools → Plugins → Bark (Ark)** → enable. If you enable it while a wallet is already open, **close and reopen the wallet**: the tab is added by the `load_wallet` hook, which runs when a wallet loads.
+2. **Tools → Plugins → Bark (Ark)** → enable. The tab is normally added by Electrum's `load_wallet` hook when a wallet loads. Since 0.1.1 the plugin also tries to add the tab to wallet windows that are already open when you enable it (best effort, **not yet verified in a live Electrum**, see §14). If the tab does not appear, **close and reopen the wallet**.
 3. Click the plugin's **Settings** button (or the *Settings* button inside the Bark tab):
-   * **barkd URL:** `http://localhost:3001`
+   * **barkd URL:** `http://localhost:3001`. If left empty, the plugin uses the `BARKD_HOST` environment variable, then `http://localhost:3001`.
    * **Auth token:** paste the output of `./script/barkd_token.sh`, **or** leave it empty and rely on the `BARKD_TOKEN` environment variable of the shell that launched Electrum.
+   * If the URL is not on your own computer and does not use HTTPS, the plugin asks for confirmation before saving, because the token would travel unencrypted.
 4. A **Bark** tab appears. The status line should read *Connected to the Ark server*, or *barkd is running but has no wallet yet* with a **Create barkd wallet (signet)** button.
 
 ## 10. Using the plugin (walkthrough)
@@ -263,10 +265,12 @@ The source code lives in the repository; this section explains how it is organis
 
 ```
 electrum-bark-plugin/
-├── README.md                 # this document
+├── README.md                 # short intro and quick start (this file is the full documentation)
+├── documentation.md          # this document
 ├── requirements.txt          # runtime dependency: barkd_client (pinned)
-├── requirements-dev.txt      # + pytest
+├── requirements-dev.txt      # requirements.txt + pytest
 ├── .gitignore
+├── Ark Quest.html            # gamified presentation web app (simulation, or live via bridge.py)
 ├── bark/                     # the plugin: this folder is symlinked or zipped
 │   ├── __init__.py
 │   ├── manifest.json
@@ -275,10 +279,14 @@ electrum-bark-plugin/
 │   ├── ui.py
 │   ├── client.py
 │   └── fake_client.py
-├── script/                   # developer helpers (shell + one Python script)
-├── tests/                    # automated tests
-└── demo/
-    └── ark-quest.html        # gamified presentation web app (standalone)
+├── script/                   # developer helpers (shell + Python scripts)
+│   ├── run_barkd.sh  barkd_token.sh  _barkd_bin.sh
+│   ├── dev_link.sh  build_zip.sh  run_tests.sh
+│   ├── smoke_test.py
+│   └── bridge.py             # local bridge between Ark Quest and the plugin client
+└── tests/                    # automated tests
+    ├── conftest.py  mock_barkd.py
+    └── test_client.py  test_fake_client.py  test_settings.py  test_ui_headless.py
 ```
 
 ### 12.1 The plugin files (`bark/`)
@@ -287,10 +295,10 @@ electrum-bark-plugin/
 |---|---|---|
 | `manifest.json` | Metadata Electrum reads **before** loading any code: internal name, display name, description, supported GUIs (`qt` only), version. Without it Electrum ignores the folder. | Read by Electrum's plugin manager |
 | `__init__.py` | Marks the folder as a Python package. Intentionally empty of logic. | – |
-| `qt.py` | **Entry point.** For the Qt GUI, Electrum instantiates the `Plugin` class defined here. It registers Electrum hooks so that a *Bark* tab is added when a wallet window opens and removed when it closes or when the plugin is disabled, and it provides the *Settings* dialog (URL, token, fake-client switch). | Electrum (hooks, plugin manager, main window); inherits from `bark.py`; creates the tab from `ui.py` |
-| `bark.py` | **GUI-independent plugin core.** Reads and writes the plugin's settings in Electrum's config file and decides which client object the rest of the plugin gets: the real one or the fake one. | Electrum's config; `client.py`; `fake_client.py` |
+| `qt.py` | **Entry point.** For the Qt GUI, Electrum instantiates the `Plugin` class defined here. It registers Electrum hooks so that a *Bark* tab is added when a wallet window opens and removed when it closes or when the plugin is disabled, and it provides the *Settings* dialog (URL, token, fake-client switch), including a confirmation if the URL is a non-local, non-HTTPS address. It also tries to add the tab to wallet windows that were already open when the plugin was enabled. | Electrum (hooks, plugin manager, main window); inherits from `bark.py`; creates the tab from `ui.py` |
+| `bark.py` | **GUI-independent plugin core.** Reads and writes the plugin's settings in Electrum's config file (host: settings value, else `BARKD_HOST`, else the default) and decides which client object the rest of the plugin gets: the real one or the fake one. | Electrum's config; `client.py`; `fake_client.py` |
 | `ui.py` | **The Bark tab** with its four pages: Overview, Receive, Send, History. Owns the 15-second refresh timer, runs every barkd call in a background thread, and turns results or errors into labels, tables, QR codes and dialogs. Also contains the bridge to Electrum's own Send tab. | The plugin object (settings, client); the client (through worker threads); Electrum's main window (dialogs, clipboard, Send tab) |
-| `client.py` | **The only file that talks to barkd.** Wraps the `barkd_client` library into a small set of methods that return plain Python values, sets timeouts, validates amounts, and converts every failure into one of three typed errors: barkd unreachable, no wallet yet, or generic error with barkd's message. | barkd's REST API (via `barkd_client`) |
+| `client.py` | **The only file that talks to barkd.** Wraps the `barkd_client` library into a small set of methods that return plain Python values, sets timeouts, validates amounts, and converts every failure into one of three typed errors: barkd unreachable, no wallet yet, or generic error with barkd's message. Also provides `is_insecure_remote(url)`, used by the settings dialog. | barkd's REST API (via `barkd_client`) |
 | `fake_client.py` | A stand-in with the **same methods** as the real client but entirely in memory: a simulated wallet that can be created, funded by a fake faucet, boarded (funds become spendable after a couple of refreshes), spent and listed in the history. Never touches the network. | Re-uses the error types from `client.py` |
 
 ### 12.2 Scripts (`script/`)
@@ -300,6 +308,7 @@ electrum-bark-plugin/
 | `run_barkd.sh` | Starts barkd for development on port 3001 with its own data directory. Keep it running in a dedicated terminal. |
 | `barkd_token.sh` | Prints barkd's auth token, meant to be exported as `BARKD_TOKEN`. |
 | `smoke_test.py` | Checks barkd and the client without Electrum: connects, creates the wallet if missing, prints a balance snapshot and a fresh on-chain address. First thing to run when something seems broken. |
+| `bridge.py` | Local HTTP bridge (127.0.0.1:8765) that serves `Ark Quest.html` and forwards its missions to the same `BarkClient` methods the plugin uses. `--fake` uses the fake client (no barkd). The token stays in this process, never in the browser. See §12.3b. |
 | `dev_link.sh` | Symlinks `bark/` into an Electrum checkout and hides it from that checkout's git status, so edits apply on the next Electrum start. |
 | `run_tests.sh` | Runs the whole test suite with the right environment (Electrum on the Python path, Qt in offscreen mode). |
 | `build_zip.sh` | Packages the plugin as `dist/bark-<version>.zip` for Electrum's *Plugins → Add*. |
@@ -310,15 +319,26 @@ electrum-bark-plugin/
 |---|---|
 | `mock_barkd.py` | A tiny fake barkd HTTP server (standard library only) that answers with barkd-shaped JSON and can simulate "no wallet", wrong token and unknown routes. It also records every request it receives. |
 | `test_client.py` | Runs the **real** `barkd_client` library against the mock server: checks parsing, error mapping, input validation, the exact request bodies sent, and that polling never creates addresses. |
-| `test_fake_client.py` | Basic behaviour of the fake client. |
+| `test_fake_client.py` | Behaviour of the fake client: state machine, errors, history order. |
+| `test_settings.py` | `is_insecure_remote()` URL classification and `BarkPlugin` settings logic (host precedence: settings, `BARKD_HOST`, default; fake-state reset; real vs fake client). The plugin tests are skipped if Electrum is not importable. |
 | `test_ui_headless.py` | Drives the real tab (real Electrum Qt widgets, no screen) through the complete user journey using the fake client and a stub Electrum window. |
 | `conftest.py` | Makes the plugin and the mock importable by the tests. |
 
-### 12.3b The demo app (`demo/`)
+### 12.3b The demo app (`Ark Quest.html` and `script/bridge.py`)
 
 | File | Purpose |
 |---|---|
-| `ark-quest.html` | A single self-contained page (no build step, no server, no dependencies except optional web fonts) used for the presentation. It **simulates** the Electrum → barkd → Ark journey as a five-mission game. It does not talk to barkd or to the plugin; it only mirrors their behaviour and shows the real endpoint each step would call. Open it in any browser, or host it as a static file. |
+| `Ark Quest.html` | A single self-contained page (no build step, no dependencies except optional Google web fonts) used for the presentation: the Electrum → barkd → Ark journey as a five-mission game. **Opened directly** (or hosted as a static file) it runs as a pure **simulation**: it talks to nothing and only mirrors the behaviour of the plugin. **Served by `bridge.py`** it switches to **live mode** and its missions call the real plugin client. |
+| `script/bridge.py` | Serves the page on `http://127.0.0.1:8765/` and exposes `POST /api/<call>` endpoints (`snapshot`, `history`, `create_wallet`, `new_onchain_address`, `board_all`, `board_amount`, `receive_uri`, `send`, `send_onchain`, and `faucet` with `--fake`) that call the same `BarkClient` / `FakeBarkClient` methods as the plugin. |
+
+Running the demo in live mode:
+
+```bash
+python script/bridge.py --fake      # fake client: no barkd needed
+python script/bridge.py             # real barkd (BARKD_TOKEN / BARKD_HOST as for the plugin)
+```
+
+Bridge safety rules: it binds to `127.0.0.1` only, rejects requests whose `Host` header is not `localhost`/`127.0.0.1` on its own port (DNS rebinding), requires the custom `X-Ark-Quest: 1` header on `/api/` calls (no CORS is granted, so other web pages cannot call it), and caps request bodies at 64 KB (larger: HTTP 413; malformed JSON: HTTP 400). It performs **no confirmation step**: in live mode any local process that sends the header can make it spend funds from barkd. Use signet coins only.
 
 ### 12.4 Who depends on whom
 
@@ -334,7 +354,8 @@ Electrum ─ loads ─► qt.py ─ inherits ─► bark.py ─ imports ─► c
 * `client.py` and `fake_client.py` know nothing about Qt or Electrum. That is why they can be tested with plain `pytest`.
 * `ui.py` never calls barkd directly; it only calls methods on whichever client the plugin gives it, so real and fake clients are interchangeable.
 * Only `qt.py` and `ui.py` import Electrum GUI code.
-* `demo/ark-quest.html` is fully independent of everything else in the repository.
+* `script/bridge.py` imports `client.py` and `fake_client.py` only (no Electrum, no Qt) and serves `Ark Quest.html`.
+* `Ark Quest.html` has no code dependency on the repository: on its own it is a pure simulation, and it only talks to `bridge.py` over HTTP when served by it.
 
 ### 12.5 How the pieces communicate at runtime
 
@@ -367,7 +388,7 @@ You click ─► ui.py asks for confirmation (Electrum dialog)
 | Data | Location |
 |---|---|
 | Ark keys, wallet database, auth token | barkd's data directory (default `~/.bark-signet`). The plugin never sees the keys. |
-| barkd URL, optional token, fake-client flag | Electrum's config file (`bark_host`, `bark_token`, `bark_use_fake`). The token is stored in clear text there; the safer option is the `BARKD_TOKEN` environment variable. |
+| barkd URL, optional token, fake-client flag | Electrum's config file (`bark_host`, `bark_token`, `bark_use_fake`). The token is stored in clear text there; the safer option is the `BARKD_TOKEN` environment variable. If `bark_host` is empty, the `BARKD_HOST` environment variable is used. |
 | Balances, history | Not stored by the plugin: always read from barkd (or from the fake client's memory). |
 
 ### 12.7 Where to add a new feature
@@ -375,7 +396,7 @@ You click ─► ui.py asks for confirmation (Electrum dialog)
 1. New barkd capability → add a method in `client.py` (validation, timeout, plain return value) and the matching one in `fake_client.py`.
 2. Add a route to `mock_barkd.py` and a test in `test_client.py`.
 3. Add the button, field or table in `ui.py` using the same pattern as the existing actions: confirm, run in the background, show the result, refresh.
-4. Update the mapping table in §13 and the limitations list in §18.
+4. Update the mapping table in §13 and the "not verified" list in §14.
 
 ## 13. API mapping: plugin → barkd
 
@@ -401,15 +422,18 @@ Other endpoints you may want next (all present in `barkd-client 0.7.2`): `Wallet
 
 ### Verified
 
-| Area | How | Result |
+Results below are as reported by the author; the 0.1.1 changes were written without being executed, so **run `./script/run_tests.sh` before relying on them**.
+
+| Area | How | Result (author) |
 |---|---|---|
-| `BarkClient` against barkd's REST shapes (balances, history, boards, send, BIP 321, no-wallet, 401, unreachable, validation, "polling creates no addresses") | `tests/test_client.py` runs the **real `barkd-client` library** against `tests/mock_barkd.py`, a stdlib HTTP server returning barkd-shaped JSON | 12 tests pass |
+| `BarkClient` against barkd's REST shapes (balances, history, boards, send, BIP 321, no-wallet, 401, unreachable, validation, "polling creates no addresses") | `tests/test_client.py` runs the **real `barkd-client` library** against `tests/mock_barkd.py`, a stdlib HTTP server returning barkd-shaped JSON | pass |
 | `FakeBarkClient` | `tests/test_fake_client.py` | pass |
 | Whole GUI flow: no wallet → create → fund bridge → faucet → board → board confirms → receive → send → history | `tests/test_ui_headless.py`: real `BarkTab` with real Electrum 4.8.2 Qt widgets (`QRCodeWidget` etc.) under `QT_QPA_PLATFORM=offscreen`, with a stub window and the fake client | pass |
 | Plugin module imports as Electrum imports it; hook names (`load_wallet`, `close_wallet`) exist in Electrum 4.8.2; `config.set_key/get` exist | import check + source inspection | OK |
 | Zip build produces `bark/manifest.json` + code | `script/build_zip.sh` | OK |
+| URL safety check and plugin settings logic (new in 0.1.1) | `tests/test_settings.py` | **not yet run** |
 
-Total: **15 tests**, run with `./script/run_tests.sh`.
+The suite contains well over 70 test cases once parametrised ones are counted; the exact number is printed by `./script/run_tests.sh`.
 
 ### NOT verified — check these yourself first
 
@@ -418,7 +442,10 @@ Total: **15 tests**, run with `./script/run_tests.sh`.
 3. **BIP 321 details.** Unknown whether barkd returns a Lightning invoice when no amount is given, and what `onchain=false` omits. The UI shows whatever comes back (fields can be empty or `None`).
 4. **`send_onchain` semantics.** Treated as "pay an on-chain address from the Ark balance". Read the endpoint's description in the Second API reference before relying on it.
 5. **Whether public signet faucets work with Second's signet** (see §8).
-6. **Python 3.10** (the author's interpreter). Tests ran on 3.12; the code uses no 3.11+ features.
+6. **Python 3.10** is the author's interpreter and the one the cached test bytecode comes from. Other versions (e.g. 3.12) have not been confirmed; the code uses no 3.11+ features.
+7. **Attaching the tab to already-open wallet windows** (new in 0.1.1, `Plugin._attach_open_windows` in `qt.py`). It looks up Electrum's main windows through Qt; the lookup has not been exercised in a live Electrum. It fails safe (logs and does nothing), in which case close and reopen the wallet.
+8. **Electrum config variables** are not registered in `bark/__init__.py` (settings use plain `config.get/set_key` keys). Whether Electrum 4.8.x requires or prefers registered config variables for plugins has not been checked.
+9. **`bridge.py`** (including the 0.1.1 request-body handling) has no automated tests.
 
 Recommended first live check, in order: `smoke_test.py` → open the tab → *Fund barkd…* → faucet/transfer → board → watch *Ark, boarding (pending)* turn into spendable. Fix what breaks in that order.
 
@@ -435,7 +462,7 @@ The headless GUI test is skipped automatically if Electrum/PyQt6 are not importa
 ## 15. Packaging and distribution
 
 ```bash
-./script/build_zip.sh        # -> dist/bark-0.1.0.zip  (version from bark/manifest.json)
+./script/build_zip.sh        # -> dist/bark-0.1.1.zip  (version from bark/manifest.json)
 ```
 
 Electrum 4.8 supports external plugins as zip files: **Tools → Plugins → Add**, select the zip, and confirm with your authorization password. Electrum stores them in `<electrum data dir>/plugins`.
@@ -459,7 +486,7 @@ Bump the version in `bark/manifest.json` before building a release zip.
 | Error *Unauthorized: wrong or missing barkd token* | Token in Settings (or `BARKD_TOKEN`) differs from barkd's. Re-run `./script/barkd_token.sh` with the **same** `BARKD_DATADIR`. After `secret refresh`, restart barkd. |
 | *barkd error 422 … No wallet set* | No wallet yet: press *Create barkd wallet* (or run `smoke_test.py`). |
 | `create_wallet` says the wallet already exists | Fine — it exists; press *Sync*. To start over, stop barkd and use a new `--datadir` (signet only!). |
-| Bark tab missing | Plugin not enabled; or enabled while a wallet was open (close and reopen the wallet); or symlink broken (`ls -l electrum/electrum/plugins/bark`); or the wallet window is not a Qt window. Launch with `./run_electrum --signet -v` and read the terminal for import errors. |
+| Bark tab missing | Plugin not enabled; or enabled while a wallet was open and the automatic attach (§9, §14 item 7) did not work (close and reopen the wallet); or symlink broken (`ls -l electrum/electrum/plugins/bark`); or the wallet window is not a Qt window. Launch with `./run_electrum --signet -v` and read the terminal for import errors. |
 | `No module named 'barkd_client'` in Electrum's log | `pip install barkd_client==0.7.2` in the **same venv** that runs Electrum. |
 | `ModuleNotFoundError: electrum_ecc` / build errors installing Electrum deps | `sudo apt install autoconf automake libtool pkg-config`, then reinstall requirements. |
 | Qt error `xcb … could not load the Qt platform plugin` | `sudo apt install libxcb-cursor0`. |
@@ -475,7 +502,8 @@ Bump the version in `bark/manifest.json` before building a release zip.
 
 * **Signet only.** This is hackathon code. Do not point it at mainnet funds.
 * The barkd **token controls the wallet**. The plugin stores it **in clear text** in Electrum's config if you type it into Settings. Prefer leaving the field empty and exporting `BARKD_TOKEN` in the launching shell.
-* Keep barkd on `127.0.0.1`. Do not expose its port to the network.
+* Keep barkd on `127.0.0.1`. Do not expose its port to the network. If you do point the plugin at a non-local URL, use HTTPS: the settings dialog asks for confirmation when the URL is non-local and plain HTTP, since the token would travel unencrypted.
+* `script/bridge.py` has no per-action confirmation and, in live mode, can make barkd send funds on request of any local process that sends its custom header. Run it only during a demo, on signet.
 * barkd's mnemonic endpoint is disabled by default; leave it disabled.
 * The mnemonic alone restores Ark funds only with the server's cooperation; a full recovery also needs the datadir/database backup (see Second's backup docs). Irrelevant on signet, worth stating in a demo.
 * Never commit tokens, datadirs or mnemonics. `.gitignore` already excludes `.env`, `venv/`, `dist/`. If a token ever lands in git history, rotate it (`secret refresh`).
@@ -488,3 +516,14 @@ Bump the version in `bark/manifest.json` before building a release zip.
 * Signet guide: https://second.tech/docs/getting-started/bark-cli/signet
 * Electrum source: https://github.com/spesmilo/electrum (`electrum/plugin.py`, `electrum/plugins/README`, and existing plugins such as `labels` as templates)
 * Project repository: https://github.com/pietrovalese/electrum-bark-plugin
+
+## 19. Changelog
+
+### 0.1.1
+
+* **Docs:** corrected the repository tree, the demo location (`Ark Quest.html`), the description of the demo (it has a live mode through `bridge.py`), test counts and Python version, broken anchors and section references; README rewritten in English as a short quick start.
+* **Added:** `requirements-dev.txt`, `tests/test_settings.py`, `.gitignore` entries for `.env`, `venv/`, `dist/`.
+* **Plugin:** `BARKD_HOST` is now honoured when no host is set in the settings; the settings dialog asks for confirmation if the URL is non-local and not HTTPS (`is_insecure_remote` in `client.py`); the plugin tries to add the Bark tab to wallet windows already open when it is enabled; fixed `do_sync` clearing the polling flag of an in-flight poll (`_render_snapshot` split from `_on_snapshot` in `ui.py`).
+* **Bridge:** request bodies over 64 KB now get HTTP 413 (instead of being truncated into a 500), malformed or non-object JSON gets HTTP 400, and a startup notice states that live mode can spend funds.
+* **Removed:** `script/smoke_test2.py` and `script/test_client.py` (obsolete, superseded by `smoke_test.py` and `tests/`).
+* **Not changed:** the code comments in `client.py`, `fake_client.py` and `ui.py` are still in Italian; user-visible strings are English.
