@@ -14,7 +14,7 @@ class BarkPlugin(BasePlugin):
     # --- config (chiavi semplici; il token è in chiaro nella config: ok per hackathon,
     #     meglio lasciarlo vuoto e usare la variabile d'ambiente BARKD_TOKEN) ---
     def get_host(self) -> str:
-        return self.config.get('bark_host') or DEFAULT_HOST
+        return self.config.get('bark_host') or ''
 
     def get_token(self) -> str:
         return self.config.get('bark_token') or ''

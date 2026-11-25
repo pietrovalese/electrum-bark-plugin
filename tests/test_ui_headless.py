@@ -362,6 +362,22 @@ def test_do_sync_updates_overview(qapp, funded):
     assert tab.sync_btn.isEnabled() and 'Connected' in tab.status.text()
 
 
+def test_in_flight_balance_is_shown(qapp, make_tab):
+    tab, client, window, plugin = make_tab('ok')
+    client.balances['in_flight'] = 450
+    tab.refresh()
+    pump(qapp, idle(tab))
+    assert '(+450 sat in flight)' in tab.ark_pending.text()
+
+
+def test_do_sync_does_not_clear_polling_flag(qapp, funded):
+    tab, client, window, plugin = funded
+    tab._polling = True
+    tab._render_snapshot(client.snapshot(), None)
+    assert tab._polling is True
+    tab._polling = False
+
+
 # ----------------------------------------------------------------------------- ciclo di vita
 def test_stop_halts_timer_and_ignores_late_results(qapp, make_tab):
     tab, client, window, plugin = make_tab('ok')

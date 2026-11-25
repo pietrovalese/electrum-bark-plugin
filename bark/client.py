@@ -1,5 +1,6 @@
 import json
 import os
+from urllib.parse import urlsplit
 
 import barkd_client
 from barkd_client import (
@@ -87,6 +88,43 @@ def _check_text(value, name):
     return value.strip()
 
 
+def parse_sat(text: str, name: str = 'Amount'):
+    """Parse human satoshi input (allowing ',', '_', spaces) into a positive int, or None if empty."""
+    text = (text or '').strip().replace(',', '').replace('_', '').replace(' ', '')
+    if not text:
+        return None
+    try:
+        value = int(text)
+    except ValueError:
+        raise ValueError(f'{name} must be a whole number of sat.') from None
+    if value <= 0:
+        raise ValueError(f'{name} must be greater than zero.')
+    return value
+
+
+def is_insecure_remote(url: str) -> bool:
+    """True when `url` points to a non-loopback host over plain HTTP (or non-HTTPS)."""
+    parts = urlsplit((url or '').strip())
+    if not parts.hostname:
+        return False
+    host = parts.hostname.lower()
+    scheme = parts.scheme.lower()
+    if scheme == 'https' or host in ('localhost', '127.0.0.1', '::1') or host.startswith('127.'):
+        return False
+    return True
+
+
+def _reject_mainnet(addr: str):
+    if not isinstance(addr, str):
+        return
+    low = addr.strip().lower()
+    if low.startswith('bitcoin:'):
+        low = low[len('bitcoin:'):].split('?', 1)[0]
+    if (low.startswith(('bc1', 'ark1'))
+            or (low.startswith('lnbc') and not low.startswith('lnbcrt'))):
+        raise BarkError("Mainnet is not supported: this plugin only operates on signet/test networks.")
+
+
 def _movement_to_dict(m) -> dict:
     """Movement di barkd -> dict semplice (stessa forma in FakeBarkClient.history)."""
     if m.sent_to:
@@ -121,25 +159,35 @@ class BarkClient:
             Configuration(host=self.host, access_token=self.token))
 
     # --- lettura (mai effetti collaterali: niente generazione di indirizzi) ---
-    def snapshot(self, sync: bool = False) -> dict:
-        """Lettura unica per la GUI. sync=True allinea prima con la chain (lento).
+    def snapshot(self, sync: bool = False, timeout=None) -> dict:
+        """Lettura unica per la GUI. sync=True allinea prima con la chain e Ark (lento).
 
         Solo letture: gli endpoint degli indirizzi di barkd ne creano uno nuovo a ogni
         chiamata, quindi qui non vengono mai usati (vedi new_onchain_address/receive_uri).
         """
+        rt = timeout or READ_TIMEOUT
+
         def run():
             with self._api() as c:
                 wallet, onchain = WalletApi(c), OnchainApi(c)
-                ark_bal = wallet.balance(_request_timeout=READ_TIMEOUT)  # alza BarkNoWallet
+                ark_bal = wallet.balance(_request_timeout=rt)  # alza BarkNoWallet
                 if sync:
+                    wallet.sync(_request_timeout=SYNC_TIMEOUT)
                     onchain.onchain_sync(_request_timeout=SYNC_TIMEOUT)
-                    ark_bal = wallet.balance(_request_timeout=READ_TIMEOUT)
-                oc_bal = onchain.onchain_balance(_request_timeout=READ_TIMEOUT)
-                connected = wallet.connected(_request_timeout=READ_TIMEOUT).connected
+                    ark_bal = wallet.balance(_request_timeout=rt)
+                oc_bal = onchain.onchain_balance(_request_timeout=rt)
+                connected = wallet.connected(_request_timeout=rt).connected
+                in_flight = (
+                    (getattr(ark_bal, 'pending_in_round_sat', 0) or 0)
+                    + (getattr(ark_bal, 'pending_lightning_send_sat', 0) or 0)
+                    + (getattr(ark_bal, 'claimable_lightning_receive_sat', 0) or 0)
+                    + (getattr(ark_bal, 'pending_exit_sat', 0) or 0)
+                )
                 return {
                     'connected': connected,
                     'ark_spendable_sat': ark_bal.spendable_sat,
                     'ark_pending_board_sat': ark_bal.pending_board_sat,
+                    'ark_in_flight_sat': in_flight,
                     'onchain_confirmed_sat': oc_bal.confirmed_sat,
                     'onchain_spendable_sat': oc_bal.trusted_spendable_sat,
                     'onchain_pending_sat':
@@ -150,6 +198,7 @@ class BarkClient:
     def sync(self):
         def run():
             with self._api() as c:
+                WalletApi(c).sync(_request_timeout=SYNC_TIMEOUT)
                 OnchainApi(c).onchain_sync(_request_timeout=SYNC_TIMEOUT)
         _call(run)
 
@@ -178,7 +227,9 @@ class BarkClient:
         def run():
             with self._api() as c:
                 return OnchainApi(c).onchain_address(_request_timeout=READ_TIMEOUT).address
-        return _call(run)
+        addr = _call(run)
+        _reject_mainnet(addr)
+        return addr
 
     def receive_uri(self, amount_sat=None, label=None, message=None, onchain=True) -> dict:
         """URI BIP 321 con indirizzo Ark, invoice Lightning e (opz.) fallback on-chain.
@@ -198,7 +249,10 @@ class BarkClient:
                 r = WalletApi(c).bip321_uri(req, _request_timeout=ACTION_TIMEOUT)
                 return {'bip321': r.bip321, 'ark': r.ark,
                         'bolt11': r.bolt11, 'onchain': r.onchain}
-        return _call(run)
+        res = _call(run)
+        _reject_mainnet(res.get('ark'))
+        _reject_mainnet(res.get('onchain'))
+        return res
 
     # --- azioni ---
     def create_wallet(self):
@@ -243,6 +297,7 @@ class BarkClient:
         amount_sat può mancare solo se la destinazione contiene già un importo.
         """
         destination = _check_text(destination, 'destination')
+        _reject_mainnet(destination)
         amount_sat = _check_amount(amount_sat)
         req = SendRequest(destination=destination, amount_sat=amount_sat,
                           comment=(comment or '').strip() or None)
@@ -256,6 +311,7 @@ class BarkClient:
     def send_onchain(self, destination: str, amount_sat: int) -> dict:
         """Paga un indirizzo on-chain dal saldo Ark (con la cooperazione del server)."""
         destination = _check_text(destination, 'destination')
+        _reject_mainnet(destination)
         amount_sat = _check_amount(amount_sat, required=True)
         req = SendOnchainRequest(destination=destination, amount_sat=amount_sat)
 

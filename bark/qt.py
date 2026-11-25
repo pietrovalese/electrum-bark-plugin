@@ -1,7 +1,7 @@
 from functools import partial
 
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QFormLayout, QLabel, QLineEdit, QCheckBox, QDialogButtonBox,
+    QApplication, QVBoxLayout, QFormLayout, QLabel, QLineEdit, QCheckBox, QDialogButtonBox,
 )
 
 from electrum.i18n import _
@@ -9,6 +9,7 @@ from electrum.plugin import hook
 from electrum.gui.qt.util import WindowModalDialog, EnterButton
 
 from .bark import BarkPlugin
+from .client import DEFAULT_HOST, is_insecure_remote
 from .ui import BarkTab
 
 
@@ -18,11 +19,20 @@ class Plugin(BarkPlugin):
     def __init__(self, parent, config, name):
         BarkPlugin.__init__(self, parent, config, name)
         self.tabs = {}  # window -> BarkTab
+        self._attach_open_windows()
+
+    def _attach_open_windows(self):
+        app = QApplication.instance()
+        if app is None:
+            return
+        for w in app.topLevelWidgets():
+            if getattr(w, 'wallet', None) is not None and hasattr(w, 'tabs'):
+                self.load_wallet(w.wallet, w)
 
     # --- hook di Electrum ---
     @hook
     def load_wallet(self, wallet, window):
-        if window in self.tabs:
+        if window is None or window in self.tabs:
             return
         tab = BarkTab(self, window)
         window.tabs.addTab(tab, _('Bark'))
@@ -32,7 +42,7 @@ class Plugin(BarkPlugin):
     @hook
     def close_wallet(self, wallet):
         for window, tab in list(self.tabs.items()):
-            if window.wallet is wallet:
+            if getattr(window, 'wallet', None) is wallet:
                 self._remove_tab(window, tab)
 
     def on_close(self):
@@ -58,6 +68,7 @@ class Plugin(BarkPlugin):
     def settings_dialog(self, window):
         d = WindowModalDialog(window, _('Bark settings'))
         host = QLineEdit(self.get_host())
+        host.setPlaceholderText(_('empty: use BARKD_HOST or {}').format(DEFAULT_HOST))
         token = QLineEdit(self.get_token())
         token.setEchoMode(QLineEdit.EchoMode.Password)
         token.setPlaceholderText(_('empty: use the BARKD_TOKEN environment variable'))
@@ -82,6 +93,13 @@ class Plugin(BarkPlugin):
         lay.addWidget(bb)
 
         if d.exec():
-            self.save_settings(host.text(), token.text(), fake.isChecked())
+            raw_host = host.text().strip()
+            if not fake.isChecked() and is_insecure_remote(raw_host):
+                if not window.question(_(
+                    'The barkd URL "{}" uses plain HTTP over a non-local address, '
+                    'which sends your auth token unencrypted.\n\nSave anyway?'
+                ).format(raw_host)):
+                    return
+            self.save_settings(raw_host, token.text(), fake.isChecked())
             for tab in self.tabs.values():
                 tab.refresh(sync=False)

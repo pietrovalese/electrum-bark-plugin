@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
 from electrum.i18n import _
 from electrum.gui.qt.qrcodewidget import QRCodeWidget, QrCodeDataOverflow
 
-from .client import BarkNoWallet, BarkUnavailable
+from .client import BarkNoWallet, BarkUnavailable, parse_sat
 from .fake_client import FakeBarkClient, FAUCET_SAT
 
 REFRESH_MS = 15_000
@@ -26,20 +26,6 @@ def fmt_sat(n, signed=False) -> str:
     if n is None:
         return '-'
     return f"{n:+,} sat" if signed else f"{n:,} sat"
-
-
-def parse_sat(text: str, name: str):
-    """Testo -> intero positivo di sat, oppure None se vuoto. ValueError se non valido."""
-    text = (text or '').strip().replace(',', '').replace('_', '').replace(' ', '')
-    if not text:
-        return None
-    try:
-        value = int(text)
-    except ValueError:
-        raise ValueError(_('{} must be a whole number of sat.').format(name)) from None
-    if value <= 0:
-        raise ValueError(_('{} must be greater than zero.').format(name))
-    return value
 
 
 def _ro_line(text=''):
@@ -334,6 +320,9 @@ class BarkTab(QWidget):
 
     def _on_snapshot(self, data, err):
         self._polling = False
+        self._render_snapshot(data, err)
+
+    def _render_snapshot(self, data, err):
         self.faucet_btn.setVisible(isinstance(self.plugin.client(), FakeBarkClient))
         if isinstance(err, BarkNoWallet):
             return self._show_no_wallet()
@@ -349,7 +338,11 @@ class BarkTab(QWidget):
             (_('Connected to the Ark server') if data['connected']
              else _('NOT connected to the Ark server')) + fake)
         self.ark_bal.setText(fmt_sat(data['ark_spendable_sat']))
-        self.ark_pending.setText(fmt_sat(data['ark_pending_board_sat']))
+        ark_pend = fmt_sat(data['ark_pending_board_sat'])
+        in_flight = data.get('ark_in_flight_sat') or 0
+        if in_flight:
+            ark_pend += ' ' + _('(+{} in flight)').format(fmt_sat(in_flight))
+        self.ark_pending.setText(ark_pend)
         oc = fmt_sat(data['onchain_confirmed_sat'])
         pending = data.get('onchain_pending_sat') or 0
         if pending:
@@ -406,7 +399,7 @@ class BarkTab(QWidget):
             if err:
                 self._show_error(err)
             else:
-                self._on_snapshot(data, None)
+                self._render_snapshot(data, None)
             if self.pages.currentIndex() == PAGE_HISTORY:
                 self.refresh_history()
         self._run(partial(client.snapshot, True), finished)
@@ -519,7 +512,10 @@ class BarkTab(QWidget):
         if onchain and amount is None:
             return self.window.show_error(_('Please enter an amount for an on-chain payment.'))
 
-        kind = _('on-chain, paid from your Ark balance') if onchain else _('Ark / Lightning')
+        kind = (
+            _('on-chain, paid from your Ark balance (on-chain fee is charged on top)')
+            if onchain else _('Ark / Lightning')
+        )
         amount_txt = fmt_sat(amount) if amount is not None else _('as specified by the destination')
         if not self.window.question(_(
                 'Send this payment?\n\nDestination:\n{}\n\nAmount: {}\nType: {}'

@@ -6,6 +6,7 @@ una rotta o farla fallire. Le rotte sconosciute rispondono 404.
 """
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 TOKEN = 'test-token'
@@ -45,6 +46,7 @@ def default_routes():
             "trusted_pending_sat": 100, "trusted_spendable_sat": 9000,
             "untrusted_pending_sat": 50},
         ('POST', '/api/v1/onchain/sync'): {},
+        ('POST', '/api/v1/wallet/sync'): {},
         ('GET', '/api/v1/history'): [MOVE_SEND, MOVE_RECEIVE],
         ('GET', '/api/v1/boards/pending'): [{
             "amount_sat": 300, "funding_tx": {"tx": "00", "txid": TXID_BOARD},
@@ -72,6 +74,7 @@ class MockBarkd:
         self.routes = default_routes()
         self.fail = {}              # (metodo, path) -> (status, testo del corpo)
         self.requests = []          # una dict per richiesta ricevuta
+        self.delay = 0.0
         self._lock = threading.Lock()
 
         mock = self
@@ -81,6 +84,8 @@ class MockBarkd:
                 pass
 
             def _handle(self):
+                if mock.delay > 0:
+                    time.sleep(mock.delay)
                 length = int(self.headers.get('Content-Length') or 0)
                 raw = self.rfile.read(length).decode() if length else ''
                 try:

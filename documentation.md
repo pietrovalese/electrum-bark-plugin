@@ -1,11 +1,9 @@
 # electrum-bark-plugin: technical documentation
 
 > An [Electrum](https://electrum.org) (Qt) plugin integrating **Bark** (Second's implementation of the **Ark**
-> protocol) through the local **`barkd`** REST daemon. Target network: **signet**. Version **0.1.0**.
+> protocol) through the local **`barkd`** REST daemon. Target network: **signet**. Version **0.1.1**.
 
-**Revision:** 2026-10-02. This document describes the tree at `0.1.0` (git `HEAD` `d11ff21` at the time of
-writing). Where earlier revisions of the docs described behaviour that is not in the code, the code wins and
-the gap is listed in [§15](#15-known-limitations).
+**Revision:** 2026-11-24. Updated for release `0.1.1`.
 
 **Verification tags.** Every non-trivial claim carries the strength of its evidence:
 
@@ -729,41 +727,22 @@ stating in a demo.
 
 ## 15. Known limitations
 
-| ID | Area | Finding | Evidence | Suggested fix |
-|---|---|---|---|---|
-| L1 | Verification | Board, send and receive have never run against a live barkd with funded signet coins. | – | Follow the live check order below. |
-| L2 | Verification | Never run in a real Electrum window: tab insertion, settings dialog, effect of `set_payment_identifier`. | tests use stubs | Manual run with `./run_electrum --signet -v`. |
-| L3 | `qt.py` | Enabling the plugin while a wallet window is open does not create the tab; Electrum fires `load_wallet` only on wallet load. | `[src]` hook sites | On `Plugin.__init__`, enumerate open Qt windows and attach tabs. Workaround: reopen the wallet. |
-| L4 | `bark.py` | `BARKD_HOST` is ignored by the plugin: `get_host()` returns `DEFAULT_HOST`, so `BarkClient` never reaches its env fallback. | `[run]` | `return self.config.get('bark_host') or None` and let `BarkClient` resolve env → default (adjust the settings dialog pre-fill). |
-| L5 | `client.py` | *Sync* syncs only the on-chain wallet; Ark-side `POST /wallet/sync` (arkoor receives, rounds, boards) is never called and relies on barkd's background loops (boards every 30 s). | `[src]` | Call `WalletApi.sync` in `snapshot(sync=True)`. |
-| L6 | `qt.py` | `load_wallet(wallet, window)` has no `window is None` guard; the RPC `load_wallet` command calls the hook with `None`. `run_hook` logs `Plugin error` and carries on. | `[src]` | `if window is None: return`. |
-| L7 | `ui.py` | `do_sync()` ends by calling `_on_snapshot`, which clears `_polling` even if a poll is still in flight, allowing two overlapping read-only polls (harmless but untidy). | code | Split rendering from flag handling. |
-| L8 | `qt.py` | No warning for non-local or non-HTTPS barkd URLs; token stored in clear text. | code, `[run]` | Confirm on non-loopback `http://`; store the token via Electrum's keystore or env only. |
-| L9 | `bridge.py` | Malformed or non-object JSON and bodies over 64 KiB return 500 instead of 400/413; no confirmation step; no tests. | `[run]` | Validate the body, return 400/413, print a spend warning, add tests. |
-| L10 | `client.py` | `snapshot()` drops `pending_in_round_sat`, `pending_lightning_send_sat`, `claimable_lightning_receive_sat` and pending-exit balances: in-flight funds are invisible. | code | Surface them in the snapshot and Overview. |
-| L11 | `ui.py` | The on-chain send dialog does not mention that the on-chain fee is charged on top of the amount. | `[src]` | State it, or query `FeesApi`. |
-| L12 | validation | Three amount validators (`ui.parse_sat`, `client._check_amount`, `fake_client._check_amount`) must stay in sync. | code | Share one helper. |
-| L13 | `script/` | `smoke_test2.py` hardcodes `http://localhost:3001`, sets no timeouts, calls `onchain_address()` (allocates an address) and imports `barkd_client` directly; `script/test_client.py` is a 3-line ad-hoc script sharing its basename with `tests/test_client.py`. | code | Delete both (superseded by `smoke_test.py` and `tests/`). |
-| L14 | Repo hygiene | `.gitignore` lacks `dist/`, `venv/`, `.env`; no `LICENSE` file despite `license: MIT`; manifest `description` is Italian and has no `min_electrum_version`; `docs/index.html` is a manual copy; comments/docstrings in `client.py`, `fake_client.py`, `ui.py`, `bark.py`, `qt.py` are Italian while UI strings are English; no CI. | code | Housekeeping. |
-| L15 | Compatibility | Client 0.7.2 vs daemon 0.7.1; strict pydantic models may reject drifted schemas. | – | Align versions; run `smoke_test.py` first. |
-| L16 | Safety | Signet-only is not enforced after wallet creation. | code | Read the network from barkd and refuse non-signet. |
-| L17 | Errors | Only *connection refused* is tested as `BarkUnavailable`; read-timeout mapping relies on urllib3 exception types `[unverified]`. | `test_unreachable_server` | Add a test with a stalled mock. |
+| ID | Area | Status | Notes / remaining gap |
+|---|---|---|---|
+| L1 | Verification | Partial | Live `barkd 0.7.1` verified on signet (`smoke_test.py`, `snapshot(sync=True)`, `new_onchain_address`, `receive_uri`, live Ark receive via `arkfaucet.com`, live `arkoor` `send`, `history`, and `BarkTab` Qt rendering). Funded on-chain boarding / `send_onchain` flows require on-chain signet coins. |
+| L2 | Verification | Unverified | Real `ElectrumWindow` visual run (`./run_electrum --signet -v`) and live Send-tab bridge effect (`set_payment_identifier`) still rely on headless/stub Qt tests. |
+| L3–L13, L17 | `0.1.1` fixes | **Resolved** | Fixed in `0.1.1`: open-window attach (`_attach_open_windows`), `BARKD_HOST` precedence, `WalletApi.sync` + `ark_in_flight_sat`, `window is None` guard, `_render_snapshot` polling flag split, remote HTTP confirmation (`is_insecure_remote`), bridge 400/413 validation & spend warning, on-chain fee notice, shared `parse_sat`/`_check_amount`, legacy script cleanup, and read-timeout test. |
+| L14 | Repo hygiene | Mostly resolved | Added `LICENSE`, `requirements-dev.txt`, extended `.gitignore`, updated `manifest.json` (`0.1.1`, English description, `min_electrum_version`). Code comments remain Italian; `docs/index.html` is a manual copy of `Ark Quest.html`. |
+| L15 | Compatibility | Verified (read/receive/Ark send) | `barkd 0.7.1` + `barkd_client 0.7.2` verified live for wallet balance/sync/address/bip321/history/Ark `send`. |
+| L16 | Safety | **Resolved** | `_reject_mainnet` blocks `bc1`, `ark1`, and `lnbc` (excluding `lnbcrt`) destinations and returned addresses before sending or displaying them. |
 
-**Planned but absent.** Earlier drafts of these docs described the following as shipped; none is in the tree:
-non-HTTPS/non-local URL confirmation (`is_insecure_remote`), automatic tab attachment to open windows,
-`BARKD_HOST` handling in the plugin, bridge 400/413 handling and spend warning, `requirements-dev.txt`,
-`tests/test_settings.py`, removal of the legacy scripts, extra `.gitignore` entries.
-
-**Verified vs unverified.**
+**Verified vs unverified (`0.1.1`).**
 
 | Verified `[run]` | Still unverified |
 |---|---|
-| 74 tests pass (Python 3.12.3, Electrum 4.8.2, PyQt6 offscreen) | Any call to a real barkd (balances, board, send, receive, create wallet) |
-| Plugin loads through Electrum's real `Plugins('qt')`: manifest, `qt.Plugin`, hooks `load_wallet` / `close_wallet`, settings persisted as `bark_host` / `bark_token` / `bark_use_fake`, fake singleton | The Bark tab inside a real `ElectrumWindow`, the settings dialog, the Send-tab bridge |
-| `dev_link.sh` (idempotent), `build_zip.sh` (7 files under `bark/`) | Zip install through *Plugins → Add* |
-| Settings precedence incl. the `BARKD_HOST` gap | Faucet/signet compatibility with Second's network |
-| Bridge guards and error codes (with `--fake`) | Client 0.7.2 against daemon 0.7.1; Python 3.10 |
-| `send_onchain` / `bip321` / `board` semantics against `barkd_client` docs `[src]` | Read-timeout error mapping |
+| **92 tests pass** (Python 3.10.12, Electrum 4.8.2, PyQt6 offscreen) across `test_client.py`, `test_fake_client.py`, `test_settings.py`, `test_ui_headless.py` | Funded live `board_all` / `board_amount` / `send_onchain` against `barkd` (needs on-chain signet coins) |
+| Live `barkd 0.7.1` on `https://ark.signet.2nd.dev`: `smoke_test.py`, `snapshot(sync=True)`, `new_onchain_address`, `receive_uri`, live Ark receive (`1,000 sat`), live `arkoor` `send` (`400 sat`), `history`, and `BarkTab` Qt rendering | Interactive `ElectrumWindow` session & zip install via *Plugins → Add* |
+| `dev_link.sh` (including broken-symlink repair), `build_zip.sh`, `barkd_token.sh` | — |
 
 **Recommended first live check, in order:** `smoke_test.py` → open the tab → *Fund barkd…* → faucet or Electrum
 transfer → wait for confirmation → board → watch *Ark, boarding (pending)* become spendable. Fix what breaks in
@@ -820,7 +799,14 @@ over raw `config.get/set_key` when adding settings (L14/Electrum docs).
 
 ## 19. Changelog
 
-### 0.1.0 (current)
+### 0.1.1 (current)
+
+* **Plugin (`bark/`):** `BARKD_HOST` env fallback fixed (`get_host()`), automatic tab attachment to already-open wallet windows (`_attach_open_windows`), `window is None` guard on `load_wallet`, confirmation prompt for non-local plain HTTP URLs (`is_insecure_remote`), Ark-side `WalletApi.sync` included in `sync()`/`snapshot(sync=True)`, `ark_in_flight_sat` surfaced in Overview, `_render_snapshot` decoupled from `_polling` flag, on-chain fee notice in Send dialog, `_reject_mainnet` guard, shared `parse_sat`/`_check_amount`.
+* **Bridge (`script/bridge.py`):** 400 for malformed/non-object JSON and invalid `Content-Length`, 413 for bodies > 64 KiB, live-mode spend warning on startup.
+* **Scripts & packaging:** `_barkd_bin.sh` checks `../barkd` as well as `../barkd/barkd`; `barkd_token.sh` initializes the secret on a fresh datadir; `dev_link.sh` repairs broken symlinks; legacy `smoke_test2.py` and `test_client.py` removed; `LICENSE`, `requirements-dev.txt`, extended `.gitignore`, updated `manifest.json` (`0.1.1`).
+* **Tests:** expanded to 92 tests (`test_settings.py`, read-timeout test, mainnet guard test, in-flight balance and sync flag tests); live verification against `barkd 0.7.1` on `https://ark.signet.2nd.dev`.
+
+### 0.1.0
 
 * Plugin: Bark tab (Overview, Receive, Send, History), Electrum → barkd funding bridge, boarding, BIP 321
   receive, Ark / Lightning / on-chain sends, wallet creation on signet, settings dialog, 15 s read-only poll,

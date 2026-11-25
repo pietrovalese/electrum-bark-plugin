@@ -1,9 +1,10 @@
 {
     "name": "bark",
     "fullname": "Bark (Ark)",
-    "description": "Integrazione con barkd (Ark protocol): saldo Ark/on-chain, indirizzi, board e pagamenti.",
+    "description": "Bark (Ark protocol) integration via barkd: Ark and on-chain balances, funding bridge, boarding, BIP 321 receive, and Ark/Lightning/on-chain payments.",
     "available_for": ["qt"],
+    "min_electrum_version": "4.5.0",
     "author": "Pietro",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "license": "MIT"
 }

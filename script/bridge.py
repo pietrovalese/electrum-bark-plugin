@@ -79,8 +79,21 @@ def make_handler(client, fake, port):
             if name == 'faucet' and not fake:
                 return self._send(400, {'error': 'faucet exists only with --fake', 'kind': 'error'})
             try:
-                n = min(int(self.headers.get('Content-Length') or 0), 65536)
-                args = json.loads(self.rfile.read(n) or b'{}')
+                length = int(self.headers.get('Content-Length') or 0)
+            except ValueError:
+                return self._send(400, {'error': 'invalid Content-Length', 'kind': 'error'})
+            if length < 0:
+                return self._send(400, {'error': 'invalid Content-Length', 'kind': 'error'})
+            if length > 65536:
+                return self._send(413, {'error': 'request body too large (max 64 KiB)', 'kind': 'error'})
+            raw = self.rfile.read(length) if length else b'{}'
+            try:
+                args = json.loads(raw or b'{}')
+            except (ValueError, UnicodeDecodeError):
+                return self._send(400, {'error': 'malformed JSON body', 'kind': 'error'})
+            if not isinstance(args, dict):
+                return self._send(400, {'error': 'JSON body must be an object', 'kind': 'error'})
+            try:
                 self._send(200, {'result': CALLS[name](client, args)})
             except BarkNoWallet as e:
                 self._send(409, {'error': str(e), 'kind': 'no_wallet'})
@@ -102,8 +115,10 @@ def main():
     if PAGE is None:
         sys.exit("Ark Quest.html not found")
     client = FakeBarkClient('no_wallet') if args.fake else BarkClient()
-    if not args.fake and not client.token:
-        print("warning: BARKD_TOKEN is not set (export BARKD_TOKEN=$(./script/barkd_token.sh))")
+    if not args.fake:
+        print("warning: live mode has no confirmation step; any local process can spend barkd funds.")
+        if not client.token:
+            print("warning: BARKD_TOKEN is not set (export BARKD_TOKEN=$(./script/barkd_token.sh))")
     server = ThreadingHTTPServer(('127.0.0.1', args.port),
                                  make_handler(client, args.fake, args.port))
     print(f"Ark Quest on http://127.0.0.1:{args.port}/  "

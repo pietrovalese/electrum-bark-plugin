@@ -3,23 +3,16 @@ import threading
 import time
 from urllib.parse import quote
 
-from .client import BarkError, BarkNoWallet, BarkUnavailable
+from .client import (
+    BarkError, BarkNoWallet, BarkUnavailable,
+    _check_amount, _check_text, _reject_mainnet,
+)
 
 FAUCET_SAT = 100_000
 BOARD_CONFIRM_REFRESHES = 2   # snapshot() necessari perché un board diventi spendibile
 LN_FEE_PPM = 1000             # commissione finta Lightning: 0.1%
 ONCHAIN_FEE_SAT = 200         # commissione finta per pagare on-chain dal saldo Ark
 FAKE_INVOICE_SAT = 1_000      # importo "contenuto" nelle invoice finte senza importo esplicito
-
-
-def _check_amount(amount, *, required=False):
-    if amount is None:
-        if required:
-            raise BarkError("Missing amount.")
-        return None
-    if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
-        raise BarkError("Invalid amount: must be a positive whole number of sat.")
-    return amount
 
 
 _B32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
@@ -76,7 +69,7 @@ class FakeBarkClient:
 
     def __init__(self, scenario='no_wallet'):
         self.scenario = scenario
-        self.balances = dict(ark=0, pending_board=0, oc_confirmed=0, oc_spendable=0)
+        self.balances = dict(ark=0, pending_board=0, in_flight=0, oc_confirmed=0, oc_spendable=0)
         self._lock = threading.RLock()   # la GUI chiama da thread worker diversi
         self._boards = []                # board in attesa: dict con 'ticks' residui
         self._moves = []                 # movimenti, dal più vecchio al più recente
@@ -145,6 +138,7 @@ class FakeBarkClient:
                 'connected': True,
                 'ark_spendable_sat': b['ark'],
                 'ark_pending_board_sat': b['pending_board'],
+                'ark_in_flight_sat': b.get('in_flight', 0),
                 'onchain_confirmed_sat': b['oc_confirmed'],
                 'onchain_spendable_sat': b['oc_spendable'],
                 'onchain_pending_sat': 0,
@@ -224,9 +218,8 @@ class FakeBarkClient:
             return self._board(amount_sat)
 
     def send(self, destination: str, amount_sat=None, comment=None) -> dict:
-        if not isinstance(destination, str) or not destination.strip():
-            raise BarkError("Missing destination.")
-        dest = destination.strip()
+        dest = _check_text(destination, 'destination')
+        _reject_mainnet(dest)
         amount_sat = _check_amount(amount_sat)
         low = dest.lower()
         is_ln = low.startswith(('ln', 'lightning:')) or '@' in dest
@@ -250,9 +243,8 @@ class FakeBarkClient:
                     'payment_hash': payment_hash if is_ln else None}
 
     def send_onchain(self, destination: str, amount_sat: int) -> dict:
-        if not isinstance(destination, str) or not destination.strip():
-            raise BarkError("Missing destination.")
-        dest = destination.strip()
+        dest = _check_text(destination, 'destination')
+        _reject_mainnet(dest)
         amount_sat = _check_amount(amount_sat, required=True)
         if dest.lower().startswith(('ln', 'tark1', 'ark1')) or len(dest) < 14:
             raise BarkError(f"Not an on-chain address: {dest[:40]}")

@@ -5,4 +5,8 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_barkd_bin.sh"
 
-exec "$BARKD" --datadir "$DATADIR" secret show
+mkdir -p "$DATADIR"
+if ! "$BARKD" --datadir "$DATADIR" secret show 2>/dev/null; then
+    "$BARKD" --datadir "$DATADIR" secret refresh >/dev/null 2>&1
+    exec "$BARKD" --datadir "$DATADIR" secret show
+fi

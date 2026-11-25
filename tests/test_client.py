@@ -24,21 +24,35 @@ def test_snapshot_parses_balances(client):
         'connected': True,
         'ark_spendable_sat': 5000,
         'ark_pending_board_sat': 300,
+        'ark_in_flight_sat': 0,
         'onchain_confirmed_sat': 9000,
         'onchain_spendable_sat': 9000,
         'onchain_pending_sat': 150,   # trusted 100 + untrusted 50
     }
 
 
+def test_snapshot_parses_in_flight_balances(client, barkd):
+    barkd.routes[('GET', '/api/v1/wallet/balance')] = {
+        "spendable_sat": 1000, "pending_board_sat": 200,
+        "claimable_lightning_receive_sat": 30, "pending_in_round_sat": 40,
+        "pending_lightning_send_sat": 50, "pending_exit_sat": 60,
+    }
+    snap = client.snapshot()
+    assert snap['ark_in_flight_sat'] == 180
+
+
 def test_snapshot_without_sync_does_not_sync(client, barkd):
     client.snapshot(sync=False)
     assert not barkd.calls('POST', '/onchain/sync')
+    assert not barkd.calls('POST', '/wallet/sync')
 
 
 def test_snapshot_with_sync_syncs_before_reading_balances(client, barkd):
     client.snapshot(sync=True)
     paths = [r['path'] for r in barkd.requests]
+    assert '/api/v1/wallet/sync' in paths
     assert '/api/v1/onchain/sync' in paths
+    assert paths.index('/api/v1/wallet/sync') < paths.index('/api/v1/onchain/balance')
     assert paths.index('/api/v1/onchain/sync') < paths.index('/api/v1/onchain/balance')
 
 
@@ -144,6 +158,7 @@ def test_create_wallet_targets_signet(client, barkd):
 
 def test_sync(client, barkd):
     client.sync()
+    assert len(barkd.calls('POST', '/wallet/sync')) == 1
     assert len(barkd.calls('POST', '/onchain/sync')) == 1
 
 
@@ -180,6 +195,26 @@ def test_unreachable_server():
     # porta 1: connessione rifiutata
     with pytest.raises(BarkUnavailable):
         BarkClient(host='http://127.0.0.1:1', token=TOKEN).snapshot()
+
+
+def test_read_timeout_is_mapped_to_unavailable(client, barkd):
+    barkd.delay = 0.25
+    with pytest.raises(BarkUnavailable):
+        client.snapshot(timeout=0.05)
+
+
+def test_mainnet_addresses_are_rejected(client, barkd):
+    with pytest.raises(BarkError, match='Mainnet'):
+        client.send('ark1mainnetaddr', 100)
+    with pytest.raises(BarkError, match='Mainnet'):
+        client.send('lnbc10u1pmainnetinvoice', 100)
+    with pytest.raises(BarkError, match='Mainnet'):
+        client.send_onchain('bc1qmainnetaddr00000000', 100)
+    assert not barkd.requests
+
+    barkd.routes[('POST', '/api/v1/onchain/addresses/next')] = {"address": "bc1pmainnet"}
+    with pytest.raises(BarkError, match='Mainnet'):
+        client.new_onchain_address()
 
 
 def test_barkd_error_message_is_surfaced(client, barkd):

@@ -20,7 +20,11 @@ if [ ! -d "$PLUGINS_DIR" ]; then
 fi
 
 if [ -L "$LINK" ]; then
-    if [ "$(readlink -f "$LINK")" = "$(readlink -f "$PLUGIN_SRC")" ]; then
+    if [ ! -e "$LINK" ]; then
+        rm "$LINK"
+        ln -s "$PLUGIN_SRC" "$LINK"
+        echo "re-linked broken symlink: $LINK -> $PLUGIN_SRC"
+    elif [ "$(readlink -f "$LINK")" = "$(readlink -f "$PLUGIN_SRC")" ]; then
         echo "already linked: $LINK -> $PLUGIN_SRC"
     else
         echo "$LINK is a symlink to something else: $(readlink "$LINK")" >&2
